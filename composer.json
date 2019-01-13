@@ -1,0 +1,28 @@
+{
+    "name": "danielgp/csv_bank_statements_into_array",
+    "description": "support for Bank Stements as CSV format conversion into PHP Array",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Daniel Popiniuc",
+            "email": "danielpopiniuc@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^5.4 || ^5.5 || ^5.6 || ^7.0 || ^7.1 || ^7.2 || ^7.3",
+        "ext-json": "*",
+        "danielgp/io-operations": "~1.0"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "archive": {
+        "exclude": [
+            "/.settings",
+            "/nbproject",
+            "/results",
+            "/vendor"
+        ]
+    }
+}
