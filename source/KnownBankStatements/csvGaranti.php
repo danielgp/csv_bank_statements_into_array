@@ -36,7 +36,7 @@ class csvGaranti
 
     use BasicFunctionality;
 
-    protected function processCsvFileFromGaranti($strFileNameToProcess, $aryLn)
+    public function processCsvFileFromGaranti($strFileNameToProcess, $aryLn)
     {
         $aryResultHeader             = [];
         $aryResultHeader['FileName'] = pathinfo($strFileNameToProcess, PATHINFO_FILENAME);
