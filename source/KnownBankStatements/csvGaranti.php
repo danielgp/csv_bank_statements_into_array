@@ -36,17 +36,23 @@ class csvGaranti
 
     use BasicFunctionality;
 
+    private $aryRsltHdr = [];
+
+    private function initializeHeader($strFileNameToProcess)
+    {
+        $this->aryRsltHdr['FileName'] = pathinfo($strFileNameToProcess, PATHINFO_FILENAME);
+    }
+
     public function processCsvFileFromGaranti($strFileNameToProcess, $aryLn)
     {
-        $aryResultHeader             = [];
-        $aryResultHeader['FileName'] = pathinfo($strFileNameToProcess, PATHINFO_FILENAME);
-        $aryResultLine               = [];
-        $aryCol                      = [];
-        $intOp                       = 0;
-        $intEmptyLineCounter         = 0;
-        $intRegisteredComision       = 0;
-        $aryHeaderToMap              = $this->knownHeaders();
-        $bolHeaderFound              = false;
+        $this->initializeHeader($strFileNameToProcess);
+        $aryResultLine         = [];
+        $aryCol                = [];
+        $intOp                 = 0;
+        $intEmptyLineCounter   = 0;
+        $intRegisteredComision = 0;
+        $aryHeaderToMap        = $this->knownHeaders();
+        $bolHeaderFound        = false;
         foreach ($aryLn as $intLineNumber => $strLineContent) {
             $aryLinePieces = explode(';', str_replace(':', '', $strLineContent));
             if ((count($aryLinePieces) >= 2) && ($aryLinePieces[1] == 'Explicatii')) {
@@ -237,14 +243,14 @@ class csvGaranti
                 }
                 $intEmptyLineCounter = 0;
             } elseif (array_key_exists($aryLinePieces[0], $aryHeaderToMap)) {
-                $aryResultHeader[$aryHeaderToMap[$aryLinePieces[0]]['Name']] = $this->applyEtlConversions(''
+                $this->aryRsltHdr[$aryHeaderToMap[$aryLinePieces[0]]['Name']] = $this->applyEtlConversions(''
                         . $aryLinePieces[1], $aryHeaderToMap[$aryLinePieces[0]]['ETL']);
             } else {
-                $aryResultHeader[$aryLinePieces[0]] = trim($aryLinePieces[1]);
+                $this->aryRsltHdr[$aryLinePieces[0]] = trim($aryLinePieces[1]);
             }
             if ($intEmptyLineCounter == 2) {
                 return [
-                    'Header' => $aryResultHeader,
+                    'Header' => $this->aryRsltHdr,
                     'Lines'  => $aryResultLine,
                 ];
             }
