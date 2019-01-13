@@ -57,28 +57,41 @@ class csvING
         foreach ($aryIdentifier as $strIdentifier => $strIdentifierAttributes) {
             $intIdentifierLength = strlen($strIdentifier);
             if (substr($strHaystack, 0, $intIdentifierLength) == $strIdentifier) {
-                $this->assignBasedOnIdentifierSingle($strHaystack, $intOp, $strIdentifier, $strIdentifierAttributes);
+                $strFinalString = str_ireplace($strIdentifier, '', $strHaystack);
+                if ($strIdentifierAttributes['AssignmentType'] === 'Header') {
+                    $strColumnToAssign = $strIdentifierAttributes['Label'];
+                    $strHaystack       = $strIdentifierAttributes['S'];
+                } else {
+                    $strColumnToAssign = $this->aryCol[$strIdentifierAttributes['ColumnToAssign']];
+                }
+                $aryParameters = [
+                    'AssignmentType' => $strIdentifierAttributes['AssignmentType'],
+                    'Column'         => $strColumnToAssign,
+                ];
+                $this->assignBasedOnIdentifierSingle($strHaystack, $intOp, $strFinalString, $aryParameters);
             }
         }
     }
 
-    private function assignBasedOnIdentifierSingle($strHaystack, $intOp, $strIdentifier, $strIdentifierAttributes)
+    private function assignBasedOnIdentifierSingle($strHaystack, $intOp, $strFinalString, $aryParameters)
     {
-        $strColumnToAssign = $this->aryCol[$strIdentifierAttributes['ColumnToAssign']];
-        $strFinalString    = str_ireplace($strIdentifier, '', $strHaystack);
-        switch ($strIdentifierAttributes['AssignmentType']) {
+        switch ($aryParameters['AssignmentType']) {
+            case 'Header':
+                $this->aryRsltHdr[$aryParameters['Column']]        = $this->transformAmountFromStringIntoNumber(''
+                        . $strHaystack);
+                break;
             case 'Plain':
-                $this->aryRsltLn[$intOp][$strColumnToAssign] = $strFinalString;
+                $this->aryRsltLn[$intOp][$aryParameters['Column']] = $strFinalString;
                 break;
             case 'PlainAndPartner':
-                $this->aryRsltLn[$intOp][$strColumnToAssign] = $strFinalString;
+                $this->aryRsltLn[$intOp][$aryParameters['Column']] = $strFinalString;
                 // avoiding overwriting Partner property
                 if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$intOp])) {
                     $this->aryRsltLn[$intOp][$this->aryCol[16]] = $strFinalString;
                 }
                 break;
             case 'SqlDate':
-                $this->aryRsltLn[$intOp][$strColumnToAssign] = $this->transformCustomDateFormatIntoSqlDate(''
+                $this->aryRsltLn[$intOp][$aryParameters['Column']] = $this->transformCustomDateFormatIntoSqlDate(''
                         . $strFinalString, 'dd-MM-yyyy');
                 break;
         }
@@ -94,16 +107,16 @@ class csvING
 
     private function initializeHeader($strFileNameToProcess)
     {
-        $strJustFileName     = pathinfo($strFileNameToProcess, PATHINFO_FILENAME);
-        $arrayFileNamePieces = explode('_', $strJustFileName);
+        $strJustFileName     = pathinfo($strFileNameToProcess);
+        $arrayFileNamePieces = explode('_', $strJustFileName['filename']);
         $this->aryRsltHdr    = [
             'Account'  => $arrayFileNamePieces[2],
             'Currency' => $arrayFileNamePieces[3],
-            'FileName' => $strJustFileName,
+            'FileName' => $strJustFileName['basename'],
         ];
     }
 
-    private function isTwoDigitNumberFolledBySpace($strLineContent)
+    private function isTwoDigitNumberFollowedBySpace($strLineContent)
     {
         if (is_numeric(substr($strLineContent, 0, 2)) && (substr($strLineContent, 2, 1) == ' ')) {
             return true;
@@ -122,11 +135,11 @@ class csvING
                 $this->aryRsltHdr['Agency'] = trim($arrayCrtPieces[1]);
                 return ['Header' => $this->aryRsltHdr, 'Lines' => $this->aryRsltLn,];
             }
-            if ($this->isTwoDigitNumberFolledBySpace($strLineContent) && (''
+            if ($this->isTwoDigitNumberFollowedBySpace($strLineContent) && (''
                     . trim($arrayLinePieces[1]) == 'Comision pe operatiune')) {
                 $this->addDebitOrCredit($intOp, $arrayLinePieces, $this->aryCol[7], $this->aryCol[8]);
                 $this->aryRsltLn[$intOp]['LineWithinFile'] .= ', ' . ($intLineNumber + 1);
-            } elseif ($this->isTwoDigitNumberFolledBySpace($strLineContent)) {
+            } elseif ($this->isTwoDigitNumberFollowedBySpace($strLineContent)) {
                 $intOp++;
                 $this->aryRsltLn[$intOp]['LineWithinFile'] = ($intLineNumber + 1);
                 $this->aryRsltLn[$intOp][$this->aryCol[0]] = $arrayLinePieces[0];
@@ -135,10 +148,6 @@ class csvING
                 $this->aryRsltLn[$intOp][$this->aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate(''
                         . $arrayLinePieces[0], 'dd MMMM yyyy');
                 $this->aryRsltLn[$intOp][$this->aryCol[5]] = $this->aryRsltLn[$intOp][$this->aryCol[4]];
-            } elseif (strlen(str_ireplace('Sold initial', '', $strLineContent)) != strlen($strLineContent)) {
-                $this->aryRsltHdr['InitialSold'] = $this->transformAmountFromStringIntoNumber($arrayLinePieces[1]);
-            } elseif (strlen(str_ireplace('Sold final', '', $strLineContent)) != strlen($strLineContent)) {
-                $this->aryRsltHdr['FinalSold'] = $this->transformAmountFromStringIntoNumber($arrayLinePieces[1]);
             } elseif (substr($strLineContent, 0, 2) == ',,') {
                 // "Nr. card:" will be ignored as only 4 characters are shown all other being replaced with ****
                 $this->assignBasedOnIdentifier($arrayLinePieces[1], $intOp, [
@@ -151,6 +160,19 @@ class csvING
                     'In contul:'                  => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 10,],
                     'Din contul:'                 => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 11,],
                     'Beneficiar:'                 => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 12,],
+                ]);
+            } elseif (substr($strLineContent, 0, 5) === 'Sold ') {
+                $this->assignBasedOnIdentifier($strLineContent, 0, [
+                    'Sold initial' => [
+                        'AssignmentType' => 'Header',
+                        'S'              => $arrayLinePieces[1],
+                        'Label'          => 'InitialSold',
+                    ],
+                    'Sold final'   => [
+                        'AssignmentType' => 'Header',
+                        'S'              => $arrayLinePieces[1],
+                        'Label'          => 'FinalSold',
+                    ],
                 ]);
             }
         }
