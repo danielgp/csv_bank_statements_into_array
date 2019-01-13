@@ -111,7 +111,7 @@ class csvGaranti
                         $strRest                            = explode('-', $aryLinePieces[1]);
                         $aryResultLine[$intOp][$aryCol[12]] = $strRest[2];
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
+                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
                             $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
                         }
                     } elseif (strlen(str_ireplace('AVANS FACTURA', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
@@ -123,7 +123,7 @@ class csvGaranti
                             'trim',
                         ]);
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
+                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
                             $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
                         }
                     } elseif (strlen(str_replace('BUGETUL DE STAT', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
@@ -143,7 +143,7 @@ class csvGaranti
                             'trim',
                         ]);
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
+                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
                             $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
                         }
                     } elseif (strlen(str_ireplace('RAMBURSURI', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
@@ -155,7 +155,7 @@ class csvGaranti
                             'trim',
                         ]);
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
+                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
                             $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
                         }
                     } elseif (strlen(str_ireplace('Plata ramburs', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
@@ -167,7 +167,7 @@ class csvGaranti
                             'trim',
                         ]);
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
+                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
                             $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
                         }
                     } elseif (strlen(str_ireplace('TRANSFER NUMERAR', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
@@ -218,7 +218,7 @@ class csvGaranti
                                                     . $aryResultLine[$intOp][$aryCol[9]]) - 8));
                         }
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
+                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
                             $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
                         }
                     }
