@@ -175,11 +175,11 @@ trait BasicFunctionality
 
     private function transformCustomDateFormatIntoSqlDate($inRomanianLongDate, $strSourceFormat)
     {
-        $dateFormatterIn  = new \IntlDateFormatter('ro_RO', IntlDateFormatter::LONG, IntlDateFormatter::NONE, ''
-                . 'Europe/Bucharest', IntlDateFormatter::GREGORIAN, $strSourceFormat);
+        $dateFormatterIn  = new \IntlDateFormatter('ro_RO', \IntlDateFormatter::LONG, \IntlDateFormatter::NONE, ''
+                . 'Europe/Bucharest', \IntlDateFormatter::GREGORIAN, $strSourceFormat);
         $intDate          = $dateFormatterIn->parse($inRomanianLongDate);
-        $dateFormatterOut = new \IntlDateFormatter('ro_RO', IntlDateFormatter::LONG, IntlDateFormatter::NONE, ''
-                . 'Europe/Bucharest', IntlDateFormatter::GREGORIAN, 'yyyy-MM-dd');
+        $dateFormatterOut = new \IntlDateFormatter('ro_RO', \IntlDateFormatter::LONG, \IntlDateFormatter::NONE, ''
+                . 'Europe/Bucharest', \IntlDateFormatter::GREGORIAN, 'yyyy-MM-dd');
         return $dateFormatterOut->format($intDate);
     }
 

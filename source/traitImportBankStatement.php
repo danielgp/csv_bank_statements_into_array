@@ -53,7 +53,7 @@ trait traitImportBankStatement
                 $arrayResult = $cBank->processCsvFileFromIng($strFileNameToProcess, $aryLn);
                 break;
             default:
-                throw new RuntimeException('Bank ' . $strBankLabel . ' is not implemented yet!');
+                throw new \RuntimeException('Bank ' . $strBankLabel . ' is not implemented yet!');
             // intentionally left out open
         }
         return $arrayResult;
