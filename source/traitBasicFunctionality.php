@@ -159,7 +159,7 @@ trait BasicFunctionality
     private function transformAmountFromStringIntoNumber($strAmount)
     {
         $intAmount = 0;
-        if (strlen($strAmount) > 5) {
+        if (strlen($strAmount) >= 5) {
             $strAmountCleaned = $this->applyStringManipulationsArray($strAmount, [
                 'remove comma followed by double quotes',
                 'remove double quotes followed by comma',
