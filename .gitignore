@@ -1,2 +1,4 @@
-/nbproject/private/
+composer.lock
 results
+/nbproject/private/
+/vendor/*
