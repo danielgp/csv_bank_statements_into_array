@@ -36,7 +36,7 @@ class csvGaranti
 
     use BasicFunctionality;
 
-    private function processCsvFileFromGaranti($strFileNameToProcess, $aryLn)
+    protected function processCsvFileFromGaranti($strFileNameToProcess, $aryLn)
     {
         $aryResultHeader             = [];
         $aryResultHeader['FileName'] = pathinfo($strFileNameToProcess, PATHINFO_FILENAME);
@@ -97,7 +97,7 @@ class csvGaranti
                         $aryResultLine[$intOp][$aryCol[1]]  = 'Plata ramburs';
                         $aryResultLine[$intOp][$aryCol[12]] = substr($aryLinePieces[1], 0, 20);
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
+                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
                             $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
                         }
                     } elseif (strlen(str_replace(' BONUS ', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
