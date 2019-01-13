@@ -31,98 +31,127 @@ class csvING
 
     use BasicFunctionality;
 
-    protected function processCsvFileFromIng($strFileNameToProcess, $aryLn)
+    private $aryCol     = [];
+    private $aryRsltHdr = [];
+    private $aryRsltLn  = [];
+
+    public function __construct()
     {
-        $aryResultHeader             = [];
-        $aryResultHeader['FileName'] = pathinfo($strFileNameToProcess, PATHINFO_FILENAME);
-        $arrayFileNamePieces         = explode('_', pathinfo($strFileNameToProcess, PATHINFO_FILENAME));
-        $aryResultHeader['Account']  = $arrayFileNamePieces[2];
-        $aryResultHeader['Currency'] = $arrayFileNamePieces[3];
-        $aryResult                   = [];
-        $aryCol                      = [];
-        $intOp                       = 0;
-        foreach ($aryLn as $intLineNumber => $strLineContent) {
-            $arrayLinePieces = explode(',,', $strLineContent);
-            if (strlen(str_ireplace('ING Bank N.V.', '', $strLineContent)) != strlen($strLineContent)) {
-                $arrayCrtPieces            = explode('-', $arrayLinePieces[0]);
-                $aryResultHeader['Agency'] = trim($arrayCrtPieces[1]);
-                return [
-                    'Header' => $aryResultHeader,
-                    'Lines'  => $aryResult,
-                ];
+        $this->aryCol = $this->arrayOutputColumnLine();
+    }
+
+    private function addDebitOrCredit($intOp, $arrayLinePieces, $strColumnForDebit, $strColumnForCredit)
+    {
+        $numberDebitAmount = $this->transformAmountFromStringIntoNumber($arrayLinePieces[2]);
+        if ($numberDebitAmount != 0) {
+            $this->aryRsltLn[$intOp][$strColumnForDebit] = $numberDebitAmount;
+        }
+        $numberCreditAmount = $this->transformAmountFromStringIntoNumber($arrayLinePieces[3]);
+        if ($numberCreditAmount != 0) {
+            $this->aryRsltLn[$intOp][$strColumnForCredit] = $numberCreditAmount;
+        }
+    }
+
+    private function assignBasedOnIdentifier($strHaystack, $intOp, $aryIdentifier)
+    {
+        foreach ($aryIdentifier as $strIdentifier => $strIdentifierAttributes) {
+            $intIdentifierLength = strlen($strIdentifier);
+            if (substr($strHaystack, 0, $intIdentifierLength) == $strIdentifier) {
+                $this->assignBasedOnIdentifierSingle($strHaystack, $intOp, $strIdentifier, $strIdentifierAttributes);
             }
-            if ($arrayLinePieces[1] == 'Detalii tranzactie') {
-                $aryCol = $this->arrayOutputColumnLine();
-            } elseif (is_numeric(substr($strLineContent, 0, 2)) && (''
-                    . substr($strLineContent, 2, 1) == ' ') && (''
+        }
+    }
+
+    private function assignBasedOnIdentifierSingle($strHaystack, $intOp, $strIdentifier, $strIdentifierAttributes)
+    {
+        $strColumnToAssign = $this->aryCol[$strIdentifierAttributes['ColumnToAssign']];
+        $strFinalString    = str_ireplace($strIdentifier, '', $strHaystack);
+        switch ($strIdentifierAttributes['AssignmentType']) {
+            case 'Plain':
+                $this->aryRsltLn[$intOp][$strColumnToAssign] = $strFinalString;
+                break;
+            case 'PlainAndPartner':
+                $this->aryRsltLn[$intOp][$strColumnToAssign] = $strFinalString;
+                // avoiding overwriting Partner property
+                if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$intOp])) {
+                    $this->aryRsltLn[$intOp][$this->aryCol[16]] = $strFinalString;
+                }
+                break;
+            case 'SqlDate':
+                $this->aryRsltLn[$intOp][$strColumnToAssign] = $this->transformCustomDateFormatIntoSqlDate(''
+                        . $strFinalString, 'dd-MM-yyyy');
+                break;
+        }
+    }
+
+    private function containsCaseInsesitiveString($strNeedle, $strHaystack)
+    {
+        if (strlen(str_ireplace($strNeedle, '', $strHaystack)) != strlen($strHaystack)) {
+            return true;
+        }
+        return false;
+    }
+
+    private function initializeHeader($strFileNameToProcess)
+    {
+        $strJustFileName     = pathinfo($strFileNameToProcess, PATHINFO_FILENAME);
+        $arrayFileNamePieces = explode('_', $strJustFileName);
+        $this->aryRsltHdr    = [
+            'Account'  => $arrayFileNamePieces[2],
+            'Currency' => $arrayFileNamePieces[3],
+            'FileName' => $strJustFileName,
+        ];
+    }
+
+    private function isTwoDigitNumberFolledBySpace($strLineContent)
+    {
+        if (is_numeric(substr($strLineContent, 0, 2)) && (substr($strLineContent, 2, 1) == ' ')) {
+            return true;
+        }
+        return false;
+    }
+
+    public function processCsvFileFromIng($strFileNameToProcess, $aryLn)
+    {
+        $this->initializeHeader($strFileNameToProcess);
+        $intOp = 0;
+        foreach ($aryLn as $intLineNumber => $strLineContent) {
+            $arrayLinePieces = explode(',,', str_ireplace(["\n", "\r"], '', $strLineContent));
+            if ($this->containsCaseInsesitiveString('ING Bank N.V.', $strLineContent)) {
+                $arrayCrtPieces             = explode('-', $arrayLinePieces[0]);
+                $this->aryRsltHdr['Agency'] = trim($arrayCrtPieces[1]);
+                return ['Header' => $this->aryRsltHdr, 'Lines' => $this->aryRsltLn,];
+            }
+            if ($this->isTwoDigitNumberFolledBySpace($strLineContent) && (''
                     . trim($arrayLinePieces[1]) == 'Comision pe operatiune')) {
-                $numberDebitAmount = $this->transformAmountFromStringIntoNumber($arrayLinePieces[2]);
-                if ($numberDebitAmount != 0) {
-                    $aryResult[$intOp][$aryCol[7]] = $numberDebitAmount;
-                }
-                $numberCreditAmount = $this->transformAmountFromStringIntoNumber($arrayLinePieces[3]);
-                if ($numberCreditAmount != 0) {
-                    $aryResult[$intOp][$aryCol[8]] = $numberCreditAmount;
-                }
-                $aryResult[$intOp]['LineWithinFile'] .= ', ' . ($intLineNumber + 1);
-            } elseif (is_numeric(substr($strLineContent, 0, 2)) && (substr($strLineContent, 2, 1) == ' ')) {
+                $this->addDebitOrCredit($intOp, $arrayLinePieces, $this->aryCol[7], $this->aryCol[8]);
+                $this->aryRsltLn[$intOp]['LineWithinFile'] .= ', ' . ($intLineNumber + 1);
+            } elseif ($this->isTwoDigitNumberFolledBySpace($strLineContent)) {
                 $intOp++;
-                $aryResult[$intOp]['LineWithinFile'] = ($intLineNumber + 1);
-                $aryResult[$intOp][$aryCol[0]]       = $arrayLinePieces[0];
-                $aryResult[$intOp][$aryCol[1]]       = str_replace(['\'', '"'], '', $arrayLinePieces[1]);
-                $numberDebitAmount                   = $this->transformAmountFromStringIntoNumber($arrayLinePieces[2]);
-                if ($numberDebitAmount != 0) {
-                    $aryResult[$intOp][$aryCol[2]] = $numberDebitAmount;
-                }
-                $numberCreditAmount = $this->transformAmountFromStringIntoNumber($arrayLinePieces[3]);
-                if ($numberCreditAmount != 0) {
-                    $aryResult[$intOp][$aryCol[3]] = $numberCreditAmount;
-                }
-                $aryResult[$intOp][$aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate($arrayLinePieces[0], ''
-                        . 'dd MMMM yyyy');
-                $aryResult[$intOp][$aryCol[5]] = $aryResult[$intOp][$aryCol[4]];
+                $this->aryRsltLn[$intOp]['LineWithinFile'] = ($intLineNumber + 1);
+                $this->aryRsltLn[$intOp][$this->aryCol[0]] = $arrayLinePieces[0];
+                $this->aryRsltLn[$intOp][$this->aryCol[1]] = str_replace(['\'', '"'], '', $arrayLinePieces[1]);
+                $this->addDebitOrCredit($intOp, $arrayLinePieces, $this->aryCol[2], $this->aryCol[3]);
+                $this->aryRsltLn[$intOp][$this->aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate(''
+                        . $arrayLinePieces[0], 'dd MMMM yyyy');
+                $this->aryRsltLn[$intOp][$this->aryCol[5]] = $this->aryRsltLn[$intOp][$this->aryCol[4]];
             } elseif (strlen(str_ireplace('Sold initial', '', $strLineContent)) != strlen($strLineContent)) {
-                $aryResultHeader['InitialSold'] = $this->transformAmountFromStringIntoNumber($arrayLinePieces[1]);
+                $this->aryRsltHdr['InitialSold'] = $this->transformAmountFromStringIntoNumber($arrayLinePieces[1]);
             } elseif (strlen(str_ireplace('Sold final', '', $strLineContent)) != strlen($strLineContent)) {
-                $aryResultHeader['FinalSold'] = $this->transformAmountFromStringIntoNumber($arrayLinePieces[1]);
+                $this->aryRsltHdr['FinalSold'] = $this->transformAmountFromStringIntoNumber($arrayLinePieces[1]);
             } elseif (substr($strLineContent, 0, 2) == ',,') {
                 // "Nr. card:" will be ignored as only 4 characters are shown all other being replaced with ****
-                if (substr($arrayLinePieces[1], 0, 5) == 'Data:') {
-                    $aryResult[$intOp][$aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate(''
-                            . str_replace('Data:', '', $arrayLinePieces[1]), 'dd-MM-yyyy');
-                } elseif (substr($arrayLinePieces[1], 0, 9) == 'Terminal:') {
-                    $aryResult[$intOp][$aryCol[6]] = str_replace('Terminal:', '', $arrayLinePieces[1]);
-                    // avoiding overwriting Partner property
-                    if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
-                        $aryResult[$intOp][$aryCol[16]] = $aryResult[$intOp][$aryCol[6]];
-                    }
-                } elseif (substr($arrayLinePieces[1], 0, 8) == 'Detalii:') {
-                    $aryResult[$intOp][$aryCol[9]] = str_replace('Detalii:', '', $arrayLinePieces[1]);
-                } elseif (substr($arrayLinePieces[1], 0, 27) == 'Comision administrare card:') {
-                    $aryResult[$intOp][$aryCol[9]] = 'Comision administrare card';
-                } elseif (substr($arrayLinePieces[1], 0, 10) == 'In contul:') {
-                    $aryResult[$intOp][$aryCol[10]] = str_replace('In contul:', '', $arrayLinePieces[1]);
-                    // avoiding overwriting Partner property
-                    if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
-                        $aryResult[$intOp][$aryCol[16]] = $aryResult[$intOp][$aryCol[10]];
-                    }
-                } elseif (substr($arrayLinePieces[1], 0, 11) == 'Din contul:') {
-                    $aryResult[$intOp][$aryCol[11]] = str_replace('Din contul:', '', $arrayLinePieces[1]);
-                    // avoiding overwriting Partner property
-                    if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
-                        $aryResult[$intOp][$aryCol[16]] = $aryResult[$intOp][$aryCol[11]];
-                    }
-                } elseif (substr($arrayLinePieces[1], 0, 11) == 'Beneficiar:') {
-                    $aryResult[$intOp][$aryCol[12]] = str_replace('Beneficiar:', '', $arrayLinePieces[1]);
-                    // avoiding overwriting Partner property
-                    if (!array_key_exists($aryCol[16], $aryResult[$intOp])) {
-                        $aryResult[$intOp][$aryCol[16]] = $aryResult[$intOp][$aryCol[12]];
-                    }
-                } elseif (substr($arrayLinePieces[1], 0, 6) == 'Banca:') {
-                    $aryResult[$intOp][$aryCol[13]] = str_replace('Banca:', '', $arrayLinePieces[1]);
-                } elseif (substr($arrayLinePieces[1], 0, 10) == 'Referinta:') {
-                    $aryResult[$intOp][$aryCol[14]] = str_replace('Referinta:', '', $arrayLinePieces[1]);
-                }
+                $this->assignBasedOnIdentifier($arrayLinePieces[1], $intOp, [
+                    'Data:'                       => ['AssignmentType' => 'SqlDate', 'ColumnToAssign' => 5,],
+                    'Detalii:'                    => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 9,],
+                    'Comision administrare card:' => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 9,],
+                    'Banca:'                      => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 13,],
+                    'Referinta:'                  => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 14,],
+                    'Terminal:'                   => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 6,],
+                    'In contul:'                  => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 10,],
+                    'Din contul:'                 => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 11,],
+                    'Beneficiar:'                 => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 12,],
+                ]);
             }
         }
     }
