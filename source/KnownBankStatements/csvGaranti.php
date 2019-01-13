@@ -38,14 +38,15 @@ class csvGaranti
 
     private function processCsvFileFromGaranti($strFileNameToProcess, $aryLn)
     {
-        $aryResultHeader       = [];
-        $aryResultLine         = [];
-        $aryCol                = [];
-        $intOp                 = 0;
-        $intEmptyLineCounter   = 0;
-        $intRegisteredComision = 0;
-        $aryHeaderToMap        = $this->knownHeaders();
-        $bolHeaderFound        = false;
+        $aryResultHeader             = [];
+        $aryResultHeader['FileName'] = pathinfo($strFileNameToProcess, PATHINFO_FILENAME);
+        $aryResultLine               = [];
+        $aryCol                      = [];
+        $intOp                       = 0;
+        $intEmptyLineCounter         = 0;
+        $intRegisteredComision       = 0;
+        $aryHeaderToMap              = $this->knownHeaders();
+        $bolHeaderFound              = false;
         foreach ($aryLn as $intLineNumber => $strLineContent) {
             $aryLinePieces = explode(';', str_replace(':', '', $strLineContent));
             if ((count($aryLinePieces) >= 2) && ($aryLinePieces[1] == 'Explicatii')) {

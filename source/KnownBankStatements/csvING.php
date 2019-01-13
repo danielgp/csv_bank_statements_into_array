@@ -33,19 +33,19 @@ class csvING
 
     protected function processCsvFileFromIng($strFileNameToProcess, $aryLn)
     {
-        $aryResultHeader = [];
-        $aryResult       = [];
-        $aryCol          = [];
-        $intOp           = 0;
-        $aryHeaderToMap  = $this->knownHeaders();
+        $aryResultHeader             = [];
+        $aryResultHeader['FileName'] = pathinfo($strFileNameToProcess, PATHINFO_FILENAME);
+        $arrayFileNamePieces         = explode('_', pathinfo($strFileNameToProcess, PATHINFO_FILENAME));
+        $aryResultHeader['Account']  = $arrayFileNamePieces[2];
+        $aryResultHeader['Currency'] = $arrayFileNamePieces[3];
+        $aryResult                   = [];
+        $aryCol                      = [];
+        $intOp                       = 0;
         foreach ($aryLn as $intLineNumber => $strLineContent) {
             $arrayLinePieces = explode(',,', $strLineContent);
             if (strlen(str_ireplace('ING Bank N.V.', '', $strLineContent)) != strlen($strLineContent)) {
-                $arrayCrtPieces              = explode('-', $arrayLinePieces[0]);
-                $aryResultHeader['Agency']   = trim($arrayCrtPieces[1]);
-                $arrayFileNamePieces         = explode('_', pathinfo($strFileNameToProcess, PATHINFO_FILENAME));
-                $aryResultHeader['Account']  = $arrayFileNamePieces[2];
-                $aryResultHeader['Currency'] = $arrayFileNamePieces[3];
+                $arrayCrtPieces            = explode('-', $arrayLinePieces[0]);
+                $aryResultHeader['Agency'] = trim($arrayCrtPieces[1]);
                 return [
                     'Header' => $aryResultHeader,
                     'Lines'  => $aryResult,
