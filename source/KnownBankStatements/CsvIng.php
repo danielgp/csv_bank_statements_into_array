@@ -79,25 +79,25 @@ class CsvIng
         }
     }
 
-    private function assignBasedOnIdentifierSingle($strHaystack, $strFinalString, $aryParameters)
+    private function assignBasedOnIdentifierSingle($strHaystack, $strFinalString, $aryParams)
     {
-        switch ($aryParameters['AssignmentType']) {
+        switch ($aryParams['AssignmentType']) {
             case 'Header':
-                $this->aryRsltHdr[$aryParameters['Column']]                = $this->transformAmountFromStringIntoNumber(''
+                $this->aryRsltHdr[$aryParams['Column']]                = $this->transformAmountFromStringIntoNumber(''
                         . $strHaystack);
                 break;
             case 'Plain':
-                $this->aryRsltLn[$this->intOpNo][$aryParameters['Column']] = $strFinalString;
+                $this->aryRsltLn[$this->intOpNo][$aryParams['Column']] = $strFinalString;
                 break;
             case 'PlainAndPartner':
-                $this->aryRsltLn[$this->intOpNo][$aryParameters['Column']] = $strFinalString;
+                $this->aryRsltLn[$this->intOpNo][$aryParams['Column']] = $strFinalString;
                 // avoiding overwriting Partner property
                 if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$this->intOpNo])) {
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $strFinalString;
                 }
                 break;
             case 'SqlDate':
-                $this->aryRsltLn[$this->intOpNo][$aryParameters['Column']] = $this->transformCustomDateFormatIntoSqlDate(''
+                $this->aryRsltLn[$this->intOpNo][$aryParams['Column']] = $this->transformCustomDateFormatIntoSqlDate(''
                         . $strFinalString, 'dd-MM-yyyy');
                 break;
         }
