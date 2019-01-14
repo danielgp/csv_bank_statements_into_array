@@ -26,10 +26,15 @@
 
 namespace danielgp\csv_bank_statements_into_array;
 
-class csvING
+/**
+ * Implements logic to interpret CSV format public output from ING Bank
+ *
+ * @author Daniel Popiniuc <danielpopiniuc@gmail.com>
+ */
+class CsvIng
 {
 
-    use BasicFunctionality;
+    use TraitBasicFunctionality;
 
     private $aryCol     = [];
     private $aryRsltHdr = [];
@@ -191,5 +196,4 @@ class csvING
             ]);
         }
     }
-
 }

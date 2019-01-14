@@ -26,7 +26,7 @@
 
 namespace danielgp\csv_bank_statements_into_array;
 
-trait BasicFunctionality
+trait TraitBasicFunctionality
 {
 
     use \danielgp\io_operations\InputOutputStrings;
@@ -182,5 +182,4 @@ trait BasicFunctionality
                 . 'Europe/Bucharest', \IntlDateFormatter::GREGORIAN, 'yyyy-MM-dd');
         return $dateFormatterOut->format($intDate);
     }
-
 }

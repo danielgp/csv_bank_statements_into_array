@@ -31,10 +31,10 @@ namespace danielgp\csv_bank_statements_into_array;
  *
  * @author Daniel Popiniuc <danielpopiniuc@gmail.com>
  */
-class csvGaranti
+class CsvGaranti
 {
 
-    use BasicFunctionality;
+    use TraitBasicFunctionality;
 
     private $aryRsltHdr = [];
 
@@ -256,5 +256,4 @@ class csvGaranti
             }
         }
     }
-
 }

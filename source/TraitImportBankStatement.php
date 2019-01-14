@@ -29,7 +29,7 @@ namespace danielgp\csv_bank_statements_into_array;
 /**
  * Purpose of this code is to ensure import bank statements
  */
-trait traitImportBankStatement
+trait TraitImportBankStatement
 {
 
     /**
@@ -45,11 +45,11 @@ trait traitImportBankStatement
         $arrayResult = [];
         switch ($strBankLabel) {
             case 'GarantiBank':
-                $cBank       = new csvGaranti();
+                $cBank       = new CsvGaranti();
                 $arrayResult = $cBank->processCsvFileFromGaranti($strFileNameToProcess, $aryLn);
                 break;
             case 'ING':
-                $cBank       = new csvING();
+                $cBank       = new CsvIng();
                 $arrayResult = $cBank->processCsvFileFromIng($strFileNameToProcess, $aryLn);
                 break;
             default:
@@ -58,5 +58,4 @@ trait traitImportBankStatement
         }
         return $arrayResult;
     }
-
 }
