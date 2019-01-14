@@ -15,6 +15,14 @@
         "ext-json": "*",
         "danielgp/io-operations": "~1.0"
     },
+    "autoload": {
+        "classmap": [
+            "source/TraitBasicFunctionality.php",
+            "source/KnownBankStatements/CsvGaranti.php",
+            "source/KnownBankStatements/CsvIng.php",
+            "source/TraitImportBankStatement.php"
+        ]
+    },
     "minimum-stability": "stable",
     "prefer-stable": true,
     "archive": {
