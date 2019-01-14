@@ -61,8 +61,7 @@ class CsvIng
     private function assignBasedOnIdentifier($strHaystack, $aryIdentifier)
     {
         foreach ($aryIdentifier as $strIdentifier => $strIdentifierAttributes) {
-            $intIdentifierLength = strlen($strIdentifier);
-            if (substr($strHaystack, 0, $intIdentifierLength) == $strIdentifier) {
+            if (substr($strHaystack, 0, strlen($strIdentifier)) == $strIdentifier) {
                 $strFinalString = str_ireplace($strIdentifier, '', $strHaystack);
                 if ($strIdentifierAttributes['AssignmentType'] === 'Header') {
                     $strColumnToAssign = $strIdentifierAttributes['Label'];
