@@ -36,7 +36,24 @@ class CsvGaranti
 
     use TraitBasicFunctionality;
 
+    private $aryCol     = [];
     private $aryRsltHdr = [];
+    private $aryRsltLn  = [];
+    private $intOpNo    = 0;
+
+    public function __construct()
+    {
+        $this->aryCol = $this->arrayOutputColumnLine();
+    }
+
+    private function addDebitOrCredit($floatAmount, $intColumnNumberForDebit, $intColumnNumberForCredit)
+    {
+        if ($floatAmount < 0) {
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumnNumberForDebit]] = abs($floatAmount);
+        } else {
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumnNumberForCredit]] = $floatAmount;
+        }
+    }
 
     private function initializeHeader($strFileNameToProcess)
     {
@@ -46,9 +63,6 @@ class CsvGaranti
     public function processCsvFileFromGaranti($strFileNameToProcess, $aryLn)
     {
         $this->initializeHeader($strFileNameToProcess);
-        $aryResultLine         = [];
-        $aryCol                = [];
-        $intOp                 = 0;
         $intEmptyLineCounter   = 0;
         $intRegisteredComision = 0;
         $aryHeaderToMap        = $this->knownHeaders();
@@ -57,14 +71,13 @@ class CsvGaranti
             $aryLinePieces = explode(';', str_replace(':', '', $strLineContent));
             if ((count($aryLinePieces) >= 2) && ($aryLinePieces[1] == 'Explicatii')) {
                 $bolHeaderFound = true;
-                $aryCol         = $this->arrayOutputColumnLine();
             } elseif (trim($strLineContent) == '') {
                 $intEmptyLineCounter++;
             } elseif ($bolHeaderFound) {
                 $isRegularTransaction = true;
                 $floatAmount          = filter_var(str_replace(',', '.', $aryLinePieces[2]), FILTER_VALIDATE_FLOAT);
-                if ($intOp != 0) {
-                    if (trim($aryLinePieces[1]) == $aryResultLine[$intOp][$aryCol[9]]) {
+                if ($this->intOpNo != 0) {
+                    if (trim($aryLinePieces[1]) == $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]]) {
                         if ($intRegisteredComision == 0) {
                             $isRegularTransaction = false;
                             $intRegisteredComision++;
@@ -72,171 +85,163 @@ class CsvGaranti
                     }
                     if (strlen(str_replace('COMISION PLATA', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
                         if ($intRegisteredComision == 0) {
-                            $isRegularTransaction               = false;
+                            $isRegularTransaction                               = false;
                             $intRegisteredComision++;
-                            $aryResultLine[$intOp][$aryCol[15]] = trim($aryLinePieces[1]);
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[15]] = trim($aryLinePieces[1]);
                         }
                     }
                 }
                 if ($isRegularTransaction) {
-                    $intOp++;
-                    $aryResultLine[$intOp]['LineWithinFile'] = ($intLineNumber + 1);
-                    $aryResultLine[$intOp][$aryCol[0]]       = trim($aryLinePieces[0]);
-                    $aryResultLine[$intOp][$aryCol[5]]       = $this->transformCustomDateFormatIntoSqlDate(''
+                    $this->intOpNo++;
+                    $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] = ($intLineNumber + 1);
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[0]] = trim($aryLinePieces[0]);
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate(''
                             . trim($aryLinePieces[0]), 'dd.MM.yyyy');
-                    $aryResultLine[$intOp][$aryCol[4]]       = $aryResultLine[$intOp][$aryCol[5]];
-                    $aryResultLine[$intOp][$aryCol[9]]       = trim($aryLinePieces[1]);
-                    if ($floatAmount < 0) {
-                        $aryResultLine[$intOp][$aryCol[2]] = abs($floatAmount);
-                    } else {
-                        $aryResultLine[$intOp][$aryCol[3]] = $floatAmount;
-                    }
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]];
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]] = trim($aryLinePieces[1]);
+                    $this->addDebitOrCredit($floatAmount, 2, 3);
                     if (substr($aryLinePieces[1], 0, 21) == 'Comision administrare') {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Comision administrare';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Comision administrare';
                     } elseif (substr($aryLinePieces[1], 0, 7) == 'Dobanda') {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Dobanda';
-                        $aryResultLine[$intOp][$aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate(''
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Dobanda';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate(''
                                 . substr($aryLinePieces[1], 8, 10), 'dd.MM.yyyy');
                     } elseif (strtoupper(substr($aryLinePieces[1], 0, 18)) == 'TRANSFER CONT COLE') {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Transfer cont colector';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Transfer cont colector';
                     } elseif (substr($aryLinePieces[1], 0, 20) == 'GLS GENERAL LOGISTIC') {
-                        $aryResultLine[$intOp][$aryCol[1]]  = 'Plata ramburs';
-                        $aryResultLine[$intOp][$aryCol[12]] = substr($aryLinePieces[1], 0, 20);
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'Plata ramburs';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = substr($aryLinePieces[1], 0, 20);
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
-                            $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
+                        if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$this->intOpNo])) {
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]];
                         }
                     } elseif (strlen(str_replace(' BONUS ', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Depunere numerar';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Depunere numerar';
                     } elseif (strlen(str_replace(' DMSC ', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Depunere numerar';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Depunere numerar';
                     } elseif (strlen(str_replace(' INTI ', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Depunere numerar';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Depunere numerar';
                     } elseif (strlen(str_ireplace('-POS Fee-', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]]  = 'POS Fee';
-                        $strRest                            = explode('-', $aryLinePieces[1]);
-                        $aryResultLine[$intOp][$aryCol[12]] = $strRest[2];
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'POS Fee';
+                        $strRest                                            = explode('-', $aryLinePieces[1]);
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $strRest[2];
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
-                            $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
+                        if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$this->intOpNo])) {
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]];
                         }
                     } elseif (strlen(str_ireplace('AVANS FACTURA', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]]  = 'Plata avans factura';
-                        $strRest                            = str_ireplace('AVANS FACTURA', '', $aryLinePieces[1]);
-                        $aryResultLine[$intOp][$aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'Plata avans factura';
+                        $strRest                                            = str_ireplace('AVANS FACTURA', '', $aryLinePieces[1]);
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
                             'replace dash with space',
                             'replace numeric sequence followed by single space',
                             'trim',
                         ]);
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
-                            $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
+                        if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$this->intOpNo])) {
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]];
                         }
                     } elseif (strlen(str_replace('BUGETUL DE STAT', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Plata obligatii stat';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Plata obligatii stat';
                     } elseif (strlen(str_replace('PLATA TVA', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Plata obligatii stat';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Plata obligatii stat';
                     } elseif (strlen(str_replace('CASA ASIG SANATATE', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Plata obligatii stat';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Plata obligatii stat';
                     } elseif (strlen(str_replace('CUMPARARE VALUTA', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Cumparare Valuta';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Cumparare Valuta';
                     } elseif ((strlen(str_ireplace('cv fact', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) || (strlen(str_ireplace('plata fact', '', $aryLinePieces[1])) != strlen($aryLinePieces[1]))) {
-                        $aryResultLine[$intOp][$aryCol[1]]  = 'Plata factura';
-                        $strRest                            = str_ireplace(['cv fact', 'plata fact'], ' ', $aryLinePieces[1]);
-                        $aryResultLine[$intOp][$aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'Plata factura';
+                        $strRest                                            = str_ireplace(['cv fact', 'plata fact'], ' ', $aryLinePieces[1]);
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
                             'replace dash with space',
                             'replace numeric sequence followed by single space',
                             'trim',
                         ]);
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
-                            $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
+                        if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$this->intOpNo])) {
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]];
                         }
                     } elseif (strlen(str_ireplace('RAMBURSURI', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]]  = 'Plata ramburs';
-                        $strRest                            = str_ireplace('RAMBURSURI', ' ', $aryLinePieces[1]);
-                        $aryResultLine[$intOp][$aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'Plata ramburs';
+                        $strRest                                            = str_ireplace('RAMBURSURI', ' ', $aryLinePieces[1]);
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
                             'replace dash with space',
                             'replace numeric sequence followed by single space',
                             'trim',
                         ]);
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
-                            $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
+                        if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$this->intOpNo])) {
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]];
                         }
                     } elseif (strlen(str_ireplace('Plata ramburs', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]]  = 'Plata ramburs';
-                        $strRest                            = str_ireplace('Plata ramburs', ' ', $aryLinePieces[1]);
-                        $aryResultLine[$intOp][$aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'Plata ramburs';
+                        $strRest                                            = str_ireplace('Plata ramburs', ' ', $aryLinePieces[1]);
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
                             'replace dash with space',
                             'replace numeric sequence followed by single space',
                             'trim',
                         ]);
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
-                            $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
+                        if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$this->intOpNo])) {
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]];
                         }
                     } elseif (strlen(str_ireplace('TRANSFER NUMERAR', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Transfer numerar';
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Transfer numerar';
                     } else {
-                        $aryResultLine[$intOp][$aryCol[1]] = 'Altele';
-                        $strRest                           = $aryLinePieces[1];
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Altele';
+                        $strRest                                           = $aryLinePieces[1];
                         if (strlen(str_ireplace('DANIELA MARCU', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                            if (array_key_exists($aryCol[2], $aryResultLine[$intOp]) && !array_key_exists($aryCol[3], $aryResultLine[$intOp])) {
-                                $aryResultLine[$intOp][$aryCol[1]] = 'Plata';
+                            if (array_key_exists($this->aryCol[2], $this->aryRsltLn[$this->intOpNo]) && !array_key_exists($this->aryCol[3], $this->aryRsltLn[$this->intOpNo])) {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Plata';
                             }
-                            if (!array_key_exists($aryCol[2], $aryResultLine[$intOp]) && array_key_exists($aryCol[3], $aryResultLine[$intOp])) {
-                                $aryResultLine[$intOp][$aryCol[1]] = 'Incasare';
+                            if (!array_key_exists($this->aryCol[2], $this->aryRsltLn[$this->intOpNo]) && array_key_exists($this->aryCol[3], $this->aryRsltLn[$this->intOpNo])) {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Incasare';
                             }
-                            $aryResultLine[$intOp][$aryCol[12]] = 'DANIELA MARCU';
-                            $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = 'DANIELA MARCU';
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]];
                         } elseif (strlen(str_ireplace('COMISION', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                            $aryResultLine[$intOp][$aryCol[1]] = 'Comision';
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Comision';
                         } elseif (strlen(str_ireplace('CUMPARATURI POS', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                            $aryResultLine[$intOp][$aryCol[1]] = 'Plata factura cumparare';
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Plata factura cumparare';
                         } elseif (strlen(str_ireplace('TRANSILVANIA POST SR', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                            if (array_key_exists($aryCol[2], $aryResultLine[$intOp]) && !array_key_exists($aryCol[3], $aryResultLine[$intOp])) {
-                                $aryResultLine[$intOp][$aryCol[1]] = 'Plata factura cumparare';
+                            if (array_key_exists($this->aryCol[2], $this->aryRsltLn[$this->intOpNo]) && !array_key_exists($this->aryCol[3], $this->aryRsltLn[$this->intOpNo])) {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Plata factura cumparare';
                             }
-                            if (!array_key_exists($aryCol[2], $aryResultLine[$intOp]) && array_key_exists($aryCol[3], $aryResultLine[$intOp])) {
-                                $aryResultLine[$intOp][$aryCol[1]] = 'Incasare';
+                            if (!array_key_exists($this->aryCol[2], $this->aryRsltLn[$this->intOpNo]) && array_key_exists($this->aryCol[3], $this->aryRsltLn[$this->intOpNo])) {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Incasare';
                             }
-                            $aryResultLine[$intOp][$aryCol[12]] = $strRest;
-                            $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $strRest;
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]];
                         } else {
-                            $aryResultLine[$intOp][$aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
                                 'remove dot',
                                 'remove slash',
                                 'replace numeric sequence followed by single space',
                                 'trim',
                             ]);
-                            $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]];
                         }
                     }
-                    if ($aryResultLine[$intOp][$aryCol[1]] == 'Depunere numerar') {
-                        $strDocumentDate                   = substr(str_replace(' K', '', trim($aryLinePieces[1])), -5)
+                    if ($this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] == 'Depunere numerar') {
+                        $strDocumentDate                                   = substr(str_replace(' K', '', trim($aryLinePieces[1])), -5)
                                 . '/' . substr($aryLinePieces[0], -4);
-                        $aryResultLine[$intOp][$aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate(''
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate(''
                                 . $strDocumentDate, 'MM/dd/yyyy');
-                        if (!array_key_exists($aryCol[12], $aryResultLine[$intOp])) {
-                            $aryResultLine[$intOp][$aryCol[12]] = trim(''
-                                    . substr($aryResultLine[$intOp][$aryCol[9]], 0, strlen(''
-                                                    . $aryResultLine[$intOp][$aryCol[9]]) - 8));
+                        if (!array_key_exists($this->aryCol[12], $this->aryRsltLn[$this->intOpNo])) {
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = trim(''
+                                    . substr($this->aryRsltLn[$this->intOpNo][$this->aryCol[9]], 0, strlen(''
+                                                    . $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]]) - 8));
                         }
                         // avoiding overwriting Partner property
-                        if (!array_key_exists($aryCol[16], $aryResultLine[$intOp])) {
-                            $aryResultLine[$intOp][$aryCol[16]] = $aryResultLine[$intOp][$aryCol[12]];
+                        if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$this->intOpNo])) {
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]];
                         }
                     }
                     $intRegisteredComision = 0;
                 } else {
-                    if ($floatAmount < 0) {
-                        $aryResultLine[$intOp][$aryCol[7]] = abs($floatAmount);
-                    } else {
-                        $aryResultLine[$intOp][$aryCol[8]] = $floatAmount;
-                    }
-                    $intExistingLine                         = $aryResultLine[$intOp]['LineWithinFile'];
-                    $aryResultLine[$intOp]['LineWithinFile'] = [
+                    $this->addDebitOrCredit($floatAmount, 7, 8);
+                    $intExistingLine                                   = $this->aryRsltLn[$this->intOpNo]['LineWithinFile'];
+                    $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] = [
                         $intExistingLine,
                         ($intLineNumber + 1),
                     ];
@@ -251,7 +256,7 @@ class CsvGaranti
             if ($intEmptyLineCounter == 2) {
                 return [
                     'Header' => $this->aryRsltHdr,
-                    'Lines'  => $aryResultLine,
+                    'Lines'  => $this->aryRsltLn,
                 ];
             }
         }
