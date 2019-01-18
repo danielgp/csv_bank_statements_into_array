@@ -31,6 +31,11 @@ trait TraitBasicFunctionality
 
     use \danielgp\io_operations\InputOutputStrings;
 
+    protected $aryCol     = [];
+    protected $aryRsltHdr = [];
+    protected $aryRsltLn  = [];
+    protected $intOpNo    = 0;
+
     private function arrayOutputColumnLine()
     {
         return [

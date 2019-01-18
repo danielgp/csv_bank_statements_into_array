@@ -36,57 +36,9 @@ class CsvGaranti
 
     use TraitBasicFunctionality;
 
-    private $aryCol     = [];
-    private $aryRsltHdr = [];
-    private $aryRsltLn  = [];
-    private $intOpNo    = 0;
-
     public function __construct()
     {
         $this->aryCol = $this->arrayOutputColumnLine();
-    }
-
-    private function assignBasedOnIdentifier($strHaystack, $aryIdentifier)
-    {
-        foreach ($aryIdentifier as $strIdentifier => $strIdentifierAttributes) {
-            $aryParameters     = [];
-            $strFinalString    = str_ireplace($strIdentifier, '', $strHaystack);
-            $strColumnToAssign = $this->aryCol[$strIdentifierAttributes['ColumnToAssign']];
-            if (substr($strHaystack, 0, strlen($strIdentifier)) == $strIdentifier) {
-                $aryParameters = [
-                    'AssignmentType' => $strIdentifierAttributes['AssignmentType'],
-                    'Column'         => $strColumnToAssign,
-                    'Key'            => $strIdentifier,
-                ];
-            } elseif (strlen($strFinalString) != strlen($strHaystack)) {
-                $aryParameters = [
-                    'AssignmentType' => $strIdentifierAttributes['AssignmentType'],
-                    'Column'         => $strColumnToAssign,
-                    'Key'            => $strIdentifier,
-                ];
-            }
-            if (array_key_exists('Value', $strIdentifierAttributes)) {
-                $aryParameters['Value'] = $strIdentifierAttributes['Value'];
-            }
-            $this->assignBasedOnIdentifierSingle($aryParameters);
-        }
-    }
-
-    private function assignBasedOnIdentifierSingle($aryParams)
-    {
-        if ($aryParams == []) {
-            return null;
-        }
-        if (in_array($aryParams['AssignmentType'], ['Key', 'Value'])) {
-            $this->assignOnlyIfNotAlready($aryParams['Column'], $aryParams[$aryParams['AssignmentType']]);
-        }
-    }
-
-    private function assignOnlyIfNotAlready($strColumnToAssignTo, $strValueToAssign)
-    {
-        if (!array_key_exists($strColumnToAssignTo, $this->aryRsltLn[$this->intOpNo])) {
-            $this->aryRsltLn[$this->intOpNo][$strColumnToAssignTo] = $strValueToAssign;
-        }
     }
 
     private function addDebitOrCredit($floatAmount, $intColumnNumberForDebit, $intColumnNumberForCredit)
@@ -95,6 +47,65 @@ class CsvGaranti
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumnNumberForDebit]] = abs($floatAmount);
         } else {
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumnNumberForCredit]] = $floatAmount;
+        }
+    }
+
+    private function assignBasedOnDebitOrCredit($floatAmount, $intColumn, $strDebit, $strCredit)
+    {
+        if ($floatAmount < 0) {
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumn]] = $strDebit;
+        } else {
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumn]] = $strCredit;
+        }
+    }
+
+    private function assignBasedOnIdentifier($strHaystack, $aryIdentifier)
+    {
+        foreach ($aryIdentifier as $strIdentifier => $strIdentifierAttributes) {
+            $strFinalString                           = str_ireplace($strIdentifier, '', $strHaystack);
+            $strIdentifierAttributes['CleanedString'] = $strFinalString;
+            $strIdentifierAttributes['Column']        = $this->aryCol[$strIdentifierAttributes['ColumnToAssign']];
+            $strIdentifierAttributes['Key']           = $strIdentifier;
+            $bolProceed                               = false;
+            if (substr($strHaystack, 0, strlen($strIdentifier)) == $strIdentifier) {
+                $bolProceed = true;
+            } elseif (strlen($strFinalString) != strlen($strHaystack)) {
+                $bolProceed = true;
+            }
+            if ($bolProceed) {
+                $this->assignBasedOnIdentifierSingle($strIdentifierAttributes);
+            }
+        }
+    }
+
+    private function assignBasedOnIdentifierSingle($aryParams)
+    {
+        if (in_array($aryParams['AssignmentType'], ['Key', 'Value', 'ValuePlusBeneficiaryAndPartner'])) {
+            $this->assignOnlyIfNotAlready($aryParams['Column'], $aryParams[$aryParams['AssignmentType']]);
+        } elseif ($aryParams['AssignmentType'] === 'ValueDifferentForDebitAndCredit') {
+            $aryDebitCredit                                     = [
+                'C' => $aryParams['DCvalues']['Credit'],
+                'D' => $aryParams['DCvalues']['Debit'],
+            ];
+            $this->assignBasedOnDebitOrCredit($aryParams['Amount'], 1, $aryDebitCredit['D'], $aryDebitCredit['C']);
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = trim($aryParams['Key']);
+        }
+        if (in_array($aryParams['AssignmentType'], ['ValuePlusBeneficiaryAndPartner'])) {
+            $strRest                                            = $aryParams['CleanedString'];
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
+                'replace dash with space',
+                'replace numeric sequence followed by single space',
+                'trim',
+            ]);
+        }
+        // avoiding overwriting Partner property
+        $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
+    }
+
+    private function assignOnlyIfNotAlready($strColumnToAssignTo, $strValueToAssign)
+    {
+        if (!array_key_exists($strColumnToAssignTo, $this->aryRsltLn[$this->intOpNo])) {
+            $this->aryRsltLn[$this->intOpNo][$strColumnToAssignTo] = $strValueToAssign;
         }
     }
 
@@ -161,122 +172,98 @@ class CsvGaranti
                             'Value'          => 'Depunere numerar',
                             'ColumnToAssign' => 1,
                         ],
-                        'BUGETUL DE STAT'       => [
+                        'Bugetul de Stat'       => [
                             'AssignmentType' => 'Value',
                             'Value'          => 'Plata obligatii stat',
                             'ColumnToAssign' => 1,
                         ],
-                        'PLATA TVA'             => [
+                        'Plata TVA'             => [
                             'AssignmentType' => 'Value',
                             'Value'          => 'Plata obligatii stat',
                             'ColumnToAssign' => 1,
                         ],
-                        'CASA ASIG SANATATE'    => [
+                        'Casa Asig Sanatate'    => [
                             'AssignmentType' => 'Value',
                             'Value'          => 'Plata obligatii stat',
                             'ColumnToAssign' => 1,
                         ],
-                        'CUMPARATURI POS'       => [
+                        'Cumparaturi POS'       => [
                             'AssignmentType' => 'Value',
                             'Value'          => 'Plata factura cumparare',
                             'ColumnToAssign' => 1,
                         ],
-                        'TRANSFER CONT COLE'    => [
+                        'cv fact'               => [
+                            'AssignmentType'                 => 'ValuePlusBeneficiaryAndPartner',
+                            'ValuePlusBeneficiaryAndPartner' => 'Plata factura',
+                            'ColumnToAssign'                 => 1,
+                        ],
+                        'plata fact'            => [
+                            'AssignmentType'                 => 'ValuePlusBeneficiaryAndPartner',
+                            'ValuePlusBeneficiaryAndPartner' => 'Plata factura',
+                            'ColumnToAssign'                 => 1,
+                        ],
+                        'AVANS FACTURA'         => [
+                            'AssignmentType'                 => 'ValuePlusBeneficiaryAndPartner',
+                            'ValuePlusBeneficiaryAndPartner' => 'Plata avans factura',
+                            'ColumnToAssign'                 => 1,
+                        ],
+                        'Plata ramburs'         => [
+                            'AssignmentType'                 => 'ValuePlusBeneficiaryAndPartner',
+                            'ValuePlusBeneficiaryAndPartner' => 'Plata ramburs',
+                            'ColumnToAssign'                 => 1,
+                        ],
+                        'Rambursuri'            => [
+                            'AssignmentType'                 => 'ValuePlusBeneficiaryAndPartner',
+                            'ValuePlusBeneficiaryAndPartner' => 'Plata ramburs',
+                            'ColumnToAssign'                 => 1,
+                        ],
+                        'Transfer Cont Cole'    => [
                             'AssignmentType' => 'Value',
                             'Value'          => 'Transfer cont colector',
                             'ColumnToAssign' => 1,
                         ],
                         'Cumparare valuta'      => ['AssignmentType' => 'Key', 'ColumnToAssign' => 1,],
                         'Transfer numerar'      => ['AssignmentType' => 'Key', 'ColumnToAssign' => 1,],
+                        'TRANSILVANIA POST SR'  => [
+                            'Amount'         => $floatAmount,
+                            'AssignmentType' => 'ValueDifferentForDebitAndCredit',
+                            'DCvalues'       => ['Debit' => 'Plata factura cumparare', 'Credit' => 'Incasare',],
+                            'ColumnToAssign' => 1,
+                        ],
+                        'DANIELA MARCU'         => [
+                            'Amount'         => $floatAmount,
+                            'AssignmentType' => 'ValueDifferentForDebitAndCredit',
+                            'DCvalues'       => ['Debit' => 'Plata', 'Credit' => 'Incasare',],
+                            'ColumnToAssign' => 1,
+                        ],
+                        'GLS GENERAL LOGISTIC'  => [
+                            'Amount'         => $floatAmount,
+                            'AssignmentType' => 'ValueDifferentForDebitAndCredit',
+                            'DCvalues'       => ['Debit' => 'Plata ramburs', 'Credit' => 'Incasare ramburs',],
+                            'ColumnToAssign' => 1,
+                        ],
                     ]);
                     if (substr($aryLinePieces[1], 0, 7) == 'Dobanda') {
                         $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Dobanda';
                         $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate(''
                                 . substr($aryLinePieces[1], 8, 10), 'dd.MM.yyyy');
-                    } elseif (substr($aryLinePieces[1], 0, 20) == 'GLS GENERAL LOGISTIC') {
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'Plata ramburs';
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = substr($aryLinePieces[1], 0, 20);
-                        // avoiding overwriting Partner property
-                        $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
                     } elseif (strlen(str_ireplace('-POS Fee-', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
                         $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'POS Fee';
                         $strRest                                            = explode('-', $aryLinePieces[1]);
                         $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $strRest[2];
                         // avoiding overwriting Partner property
                         $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
-                    } elseif (strlen(str_ireplace('AVANS FACTURA', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'Plata avans factura';
-                        $strRest                                            = str_ireplace('AVANS FACTURA', '', $aryLinePieces[1]);
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
-                            'replace dash with space',
-                            'replace numeric sequence followed by single space',
-                            'trim',
-                        ]);
-                        // avoiding overwriting Partner property
-                        $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
-                    } elseif ((strlen(str_ireplace('cv fact', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) || (strlen(str_ireplace('plata fact', '', $aryLinePieces[1])) != strlen($aryLinePieces[1]))) {
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'Plata factura';
-                        $strRest                                            = str_ireplace(['cv fact', 'plata fact'], ' ', $aryLinePieces[1]);
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
-                            'replace dash with space',
-                            'replace numeric sequence followed by single space',
-                            'trim',
-                        ]);
-                        // avoiding overwriting Partner property
-                        $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
-                    } elseif (strlen(str_ireplace('RAMBURSURI', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'Plata ramburs';
-                        $strRest                                            = str_ireplace('RAMBURSURI', ' ', $aryLinePieces[1]);
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
-                            'replace dash with space',
-                            'replace numeric sequence followed by single space',
-                            'trim',
-                        ]);
-                        // avoiding overwriting Partner property
-                        $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
-                    } elseif (strlen(str_ireplace('Plata ramburs', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'Plata ramburs';
-                        $strRest                                            = str_ireplace('Plata ramburs', ' ', $aryLinePieces[1]);
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
-                            'replace dash with space',
-                            'replace numeric sequence followed by single space',
-                            'trim',
-                        ]);
-                        // avoiding overwriting Partner property
-                        $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
-                    } else {
+                    } elseif (!array_key_exists($this->aryCol[1], $this->aryRsltLn[$this->intOpNo])) {
                         $this->assignOnlyIfNotAlready($this->aryCol[1], 'Altele');
-                        $strRest = $aryLinePieces[1];
-                        if (strlen(str_ireplace('DANIELA MARCU', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                            if (array_key_exists($this->aryCol[2], $this->aryRsltLn[$this->intOpNo]) && !array_key_exists($this->aryCol[3], $this->aryRsltLn[$this->intOpNo])) {
-                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Plata';
-                            }
-                            if (!array_key_exists($this->aryCol[2], $this->aryRsltLn[$this->intOpNo]) && array_key_exists($this->aryCol[3], $this->aryRsltLn[$this->intOpNo])) {
-                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Incasare';
-                            }
-                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = 'DANIELA MARCU';
-                            // avoiding overwriting Partner property
-                            $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
-                        } elseif (strlen(str_ireplace('TRANSILVANIA POST SR', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                            if (array_key_exists($this->aryCol[2], $this->aryRsltLn[$this->intOpNo]) && !array_key_exists($this->aryCol[3], $this->aryRsltLn[$this->intOpNo])) {
-                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Plata factura cumparare';
-                            }
-                            if (!array_key_exists($this->aryCol[2], $this->aryRsltLn[$this->intOpNo]) && array_key_exists($this->aryCol[3], $this->aryRsltLn[$this->intOpNo])) {
-                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = 'Incasare';
-                            }
-                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $strRest;
-                            // avoiding overwriting Partner property
-                            $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
-                        } elseif ($this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] == 'Altele') {
-                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
-                                'remove dot',
-                                'remove slash',
-                                'replace numeric sequence followed by single space',
-                                'trim',
-                            ]);
-                            // avoiding overwriting Partner property
-                            $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
-                        }
+                        $strRest                                            = $aryLinePieces[1];
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
+                            'remove dot',
+                            'remove slash',
+                            'replace numeric sequence followed by single space',
+                            'trim',
+                        ]);
+                        // avoiding overwriting Partner property
+                        $this->assignOnlyIfNotAlready($this->aryCol[16], $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]]);
                     }
                     if ($this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] == 'Depunere numerar') {
                         $strDocumentDate                                   = substr(str_replace(' K', '', trim($aryLinePieces[1])), -5)

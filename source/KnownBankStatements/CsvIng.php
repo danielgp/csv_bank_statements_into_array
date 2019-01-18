@@ -36,11 +36,6 @@ class CsvIng
 
     use TraitBasicFunctionality;
 
-    private $aryCol     = [];
-    private $aryRsltHdr = [];
-    private $aryRsltLn  = [];
-    private $intOpNo    = 0;
-
     public function __construct()
     {
         $this->aryCol = $this->arrayOutputColumnLine();
