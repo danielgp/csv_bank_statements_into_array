@@ -31,10 +31,11 @@ trait TraitBasicFunctionality
 
     use \danielgp\io_operations\InputOutputStrings;
 
-    protected $aryCol     = [];
-    protected $aryRsltHdr = [];
-    protected $aryRsltLn  = [];
-    protected $intOpNo    = 0;
+    protected $aryCol                                  = [];
+    protected $aryRsltHdr                              = [];
+    protected $aryRsltLn                               = [];
+    protected $intOpNo                                 = 0;
+    protected $bolDocumentDateDifferentThanPostingDate = true;
 
     private function arrayOutputColumnLine()
     {

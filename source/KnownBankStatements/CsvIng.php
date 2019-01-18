@@ -36,9 +36,10 @@ class CsvIng
 
     use TraitBasicFunctionality;
 
-    public function __construct()
+    public function __construct($bolDocDateDiffersThanPostDate)
     {
-        $this->aryCol = $this->arrayOutputColumnLine();
+        $this->aryCol                                  = $this->arrayOutputColumnLine();
+        $this->bolDocumentDateDifferentThanPostingDate = $bolDocDateDiffersThanPostDate;
     }
 
     private function addDebitOrCredit($arrayLinePieces, $strColumnForDebit, $strColumnForCredit)
@@ -118,20 +119,22 @@ class CsvIng
 
     private function isCommission($strLineContent, $strFirstPiece)
     {
+        $bolReturn = false;
         if ($this->isTwoDigitNumberFollowedBySpace($strLineContent)) {
             if (trim($strFirstPiece) == 'Comision pe operatiune') {
-                return true;
+                $bolReturn = true;
             }
         }
-        return false;
+        return $bolReturn;
     }
 
     private function isTwoDigitNumberFollowedBySpace($strLineContent)
     {
+        $bolReturn = false;
         if (is_numeric(substr($strLineContent, 0, 2)) && (substr($strLineContent, 2, 1) == ' ')) {
-            return true;
+            $bolReturn = true;
         }
-        return false;
+        return $bolReturn;
     }
 
     public function processCsvFileFromIng($strFileNameToProcess, $aryLn)

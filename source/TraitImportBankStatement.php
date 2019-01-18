@@ -39,17 +39,17 @@ trait TraitImportBankStatement
      * @param string $strBankLabel
      * @return array Containing 2 branches: 1st one named Header, 2nd one named Lines
      */
-    public function processCsvFileFromBank($strFileNameToProcess, $strBankLabel)
+    public function processCsvFileFromBank($strFileNameToProcess, $strBankLabel, $bolDocDateDiffersThanPostDate)
     {
         $aryLn       = file($strFileNameToProcess);
         $arrayResult = [];
         switch ($strBankLabel) {
             case 'GarantiBank':
-                $cBank       = new CsvGaranti();
+                $cBank       = new CsvGaranti($bolDocDateDiffersThanPostDate);
                 $arrayResult = $cBank->processCsvFileFromGaranti($strFileNameToProcess, $aryLn);
                 break;
             case 'ING':
-                $cBank       = new CsvIng();
+                $cBank       = new CsvIng($bolDocDateDiffersThanPostDate);
                 $arrayResult = $cBank->processCsvFileFromIng($strFileNameToProcess, $aryLn);
                 break;
             default:
