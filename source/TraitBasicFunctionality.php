@@ -29,7 +29,8 @@ namespace danielgp\csv_bank_statements_into_array;
 trait TraitBasicFunctionality
 {
 
-    use \danielgp\io_operations\InputOutputStrings;
+    use \danielgp\io_operations\InputOutputStrings,
+        \danielgp\io_operations\InputOutputFiles;
 
     protected $aryCol                                  = [];
     protected $aryRsltHdr                              = [];
@@ -62,79 +63,7 @@ trait TraitBasicFunctionality
 
     private function knownHeaders()
     {
-        return [
-            'Inceput de Perioada'      => [
-                'ETL'  => [
-                    'Date Conversion from Format' => 'dd.MM.yyyy',
-                ],
-                'Name' => 'PeriodStart',
-            ],
-            'Sfarsit de Perioada'      => [
-                'ETL'  => [
-                    'Date Conversion from Format' => 'dd.MM.yyyy',
-                ],
-                'Name' => 'PeriodEnd',
-            ],
-            'Sold initial'             => [
-                'ETL'  => [
-                    'String Conversion to Float' => [
-                        'Thousand Separator' => '.',
-                        'Decimal Separator'  => ',',
-                    ],
-                ],
-                'Name' => 'InitialSold',
-            ],
-            'Sold initial intermediar' => [
-                'ETL'  => [
-                    'String Conversion to Float' => [
-                        'Thousand Separator' => '.',
-                        'Decimal Separator'  => ',',
-                    ],
-                ],
-                'Name' => 'InitialIntermediarySold',
-            ],
-            'Sold final'               => [
-                'ETL'  => [
-                    'String Conversion to Float' => [
-                        'Thousand Separator' => '.',
-                        'Decimal Separator'  => ',',
-                    ],
-                ],
-                'Name' => 'FinalSold',
-            ],
-            'Sold final intermediar'   => [
-                'ETL'  => [
-                    'String Conversion to Float' => [
-                        'Thousand Separator' => '.',
-                        'Decimal Separator'  => ',',
-                    ],
-                ],
-                'Name' => 'FinalIntermediarySold',
-            ],
-            'Titular cont'             => [
-                'ETL'  => [
-                    'String Manipulation' => 'trim'
-                ],
-                'Name' => 'Owner',
-            ],
-            'Tranzactiile Contului'    => [
-                'ETL'  => [
-                    'String Manipulation' => [
-                        'remove pipeline',
-                        'trim',
-                    ],
-                ],
-                'Name' => 'Account',
-            ],
-            'Nume Agentie'             => [
-                'ETL'  => [
-                    'String Manipulation' => [
-                        'trim',
-                    ],
-                ],
-                'Name' => 'Agency',
-            ],
-        ];
+        return $this->getArrayFromJsonFile(__DIR__, 'KnownHeaders.min.json');
     }
 
     private function applyEtlConversions($strInputString, $strEtlConversionRules)
