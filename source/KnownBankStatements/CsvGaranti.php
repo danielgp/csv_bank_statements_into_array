@@ -81,6 +81,13 @@ class CsvGaranti
 
     private function assignBasedOnIdentifierSingle($aryParams)
     {
+        if (array_key_exists('DCvalues', $aryParams)) {
+            $aryDebitCredit = [
+                'C' => $aryParams['DCvalues']['Credit'],
+                'D' => $aryParams['DCvalues']['Debit'],
+            ];
+            $this->assignBasedOnDebitOrCredit($aryParams['Amount'], 1, $aryDebitCredit['D'], $aryDebitCredit['C']);
+        }
         if (in_array($aryParams['AssignmentType'], [
                     'Key',
                     'Value',
@@ -88,21 +95,17 @@ class CsvGaranti
                     'ValuePlusDocumentDate',
                 ])) {
             $this->assignOnlyIfNotAlready($aryParams['Column'], $aryParams[$aryParams['AssignmentType']]);
-        } elseif ($aryParams['AssignmentType'] === 'ValueDifferentForDebitAndCredit') {
-            $aryDebitCredit                                     = [
-                'C' => $aryParams['DCvalues']['Credit'],
-                'D' => $aryParams['DCvalues']['Debit'],
-            ];
-            $this->assignBasedOnDebitOrCredit($aryParams['Amount'], 1, $aryDebitCredit['D'], $aryDebitCredit['C']);
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = trim($aryParams['Key']);
+        } elseif (in_array($aryParams['AssignmentType'], ['ValueDifferentForDebitAndCredit'])) {
+            $this->assignOnlyIfNotAlready($this->aryCol[12], trim($aryParams['Key']));
         }
         if (in_array($aryParams['AssignmentType'], ['ValuePlusBeneficiaryAndPartner'])) {
-            $strRest                                            = $aryParams['CleanedString'];
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
+            $strRest          = $aryParams['CleanedString'];
+            $strValueToAssign = $this->applyStringManipulationsArray($strRest, [
                 'replace dash with space',
                 'replace numeric sequence followed by single space',
                 'trim',
             ]);
+            $this->assignOnlyIfNotAlready($this->aryCol[12], $strValueToAssign);
         }
         if (in_array($aryParams['AssignmentType'], ['ValuePlusDocumentDate'])) {
             $this->processDocumentDate(trim($aryParams['CleanedString']));
@@ -170,9 +173,8 @@ class CsvGaranti
                     $intRegisteredComision = 0;
                 } else {
                     $this->addDebitOrCredit($floatAmount, 7, 8);
-                    $intExistingLine                                   = $this->aryRsltLn[$this->intOpNo]['LineWithinFile'];
                     $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] = [
-                        $intExistingLine,
+                        $this->aryRsltLn[$this->intOpNo]['LineWithinFile'],
                         ($intLineNumber + 1),
                     ];
                 }
@@ -220,106 +222,154 @@ class CsvGaranti
         $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]] = trim($aryLinePieces[1]);
         $this->addDebitOrCredit($floatAmount, 2, 3);
         $this->assignBasedOnIdentifier($aryLinePieces[1], [
-            'Comision administrare' => ['AssignmentType' => 'Key', 'ColumnToAssign' => 1,],
-            'Comision'              => ['AssignmentType' => 'Key', 'ColumnToAssign' => 1,],
-            ' BONUS '               => [
+            'Comision administrare'                => ['AssignmentType' => 'Key', 'ColumnToAssign' => 1,],
+            'Comision'                             => ['AssignmentType' => 'Key', 'ColumnToAssign' => 1,],
+            ' BONUS '                              => [
+                'Amount'         => $floatAmount,
                 'AssignmentType' => 'Value',
+                'DCvalues'       => ['Debit' => 'Depunere numerar', 'Credit' => 'Depunere numerar',],
                 'Value'          => 'Depunere numerar',
                 'ColumnToAssign' => 1,
             ],
-            ' DMSC '                => [
+            ' DMSC '                               => [
+                'Amount'         => $floatAmount,
                 'AssignmentType' => 'Value',
+                'DCvalues'       => ['Debit' => 'Depunere numerar', 'Credit' => 'Depunere numerar',],
                 'Value'          => 'Depunere numerar',
                 'ColumnToAssign' => 1,
             ],
-            ' INTI '                => [
+            ' INTI '                               => [
+                'Amount'         => $floatAmount,
                 'AssignmentType' => 'Value',
+                'DCvalues'       => ['Debit' => 'Depunere numerar', 'Credit' => 'Depunere numerar',],
                 'Value'          => 'Depunere numerar',
                 'ColumnToAssign' => 1,
             ],
-            'Bugetul de Stat'       => [
+            'Bugetul de Stat'                      => [
+                'Amount'         => $floatAmount,
                 'AssignmentType' => 'Value',
+                'DCvalues'       => ['Debit' => 'Plata obligatii stat', 'Credit' => 'Incasare obligatii stat',],
                 'Value'          => 'Plata obligatii stat',
                 'ColumnToAssign' => 1,
             ],
-            'Plata TVA'             => [
+            'Plata TVA'                            => [
+                'Amount'         => $floatAmount,
                 'AssignmentType' => 'Value',
+                'DCvalues'       => ['Debit' => 'Plata obligatii stat', 'Credit' => 'Incasare obligatii stat',],
                 'Value'          => 'Plata obligatii stat',
                 'ColumnToAssign' => 1,
             ],
-            'Casa Asig Sanatate'    => [
+            'Casa Asig Sanatate'                   => [
+                'Amount'         => $floatAmount,
                 'AssignmentType' => 'Value',
+                'DCvalues'       => ['Debit' => 'Plata obligatii stat', 'Credit' => 'Incasare obligatii stat',],
                 'Value'          => 'Plata obligatii stat',
                 'ColumnToAssign' => 1,
             ],
-            'Cumparaturi POS'       => [
-                'AssignmentType' => 'Value',
-                'Value'          => 'Plata factura cumparare',
+            'Cumparaturi POS'                      => [
+                'Amount'         => $floatAmount,
+                'AssignmentType' => 'ValueDifferentForDebitAndCredit',
+                'DCvalues'       => ['Debit' => 'Plata factura', 'Credit' => 'Incasare',],
                 'ColumnToAssign' => 1,
             ],
-            'cv fact'               => [
+            'cv fact'                              => [
+                'Amount'                         => $floatAmount,
                 'AssignmentType'                 => 'ValuePlusBeneficiaryAndPartner',
+                'DCvalues'                       => ['Debit' => 'Plata factura', 'Credit' => 'Incasare',],
                 'ValuePlusBeneficiaryAndPartner' => 'Plata factura',
                 'ColumnToAssign'                 => 1,
             ],
-            'plata fact'            => [
-                'AssignmentType'                 => 'ValuePlusBeneficiaryAndPartner',
-                'ValuePlusBeneficiaryAndPartner' => 'Plata factura',
-                'ColumnToAssign'                 => 1,
+            'plata fact'                           => [
+                'Amount'         => $floatAmount,
+                'AssignmentType' => 'ValuePlusBeneficiaryAndPartner',
+                'DCvalues'       => ['Debit' => 'Plata factura', 'Credit' => 'Incasare',],
+                'ColumnToAssign' => 1,
             ],
-            'AVANS FACTURA'         => [
+            'AVANS FACTURA'                        => [
+                'Amount'                         => $floatAmount,
                 'AssignmentType'                 => 'ValuePlusBeneficiaryAndPartner',
+                'DCvalues'                       => ['Debit' => 'Plata avans factura', 'Credit' => 'Incasare avans factura',],
                 'ValuePlusBeneficiaryAndPartner' => 'Plata avans factura',
                 'ColumnToAssign'                 => 1,
             ],
-            'Plata ramburs'         => [
+            'Plata ramburs'                        => [
+                'Amount'                         => $floatAmount,
                 'AssignmentType'                 => 'ValuePlusBeneficiaryAndPartner',
+                'DCvalues'                       => ['Debit' => 'Plata ramburs', 'Credit' => 'Incasare ramburs',],
                 'ValuePlusBeneficiaryAndPartner' => 'Plata ramburs',
                 'ColumnToAssign'                 => 1,
             ],
-            'Rambursuri'            => [
+            'Rambursuri'                           => [
+                'Amount'                         => $floatAmount,
                 'AssignmentType'                 => 'ValuePlusBeneficiaryAndPartner',
+                'DCvalues'                       => ['Debit' => 'Plata ramburs', 'Credit' => 'Incasare ramburs',],
                 'ValuePlusBeneficiaryAndPartner' => 'Plata ramburs',
                 'ColumnToAssign'                 => 1,
             ],
-            'Transfer Cont Cole'    => [
+            'Transfer Cont Cole'                   => [
+                'Amount'         => $floatAmount,
                 'AssignmentType' => 'Value',
+                'DCvalues'       => ['Debit' => 'Transfer cont colector', 'Credit' => 'Transfer cont colector',],
                 'Value'          => 'Transfer cont colector',
                 'ColumnToAssign' => 1,
             ],
-            'Cumparare valuta'      => ['AssignmentType' => 'Key', 'ColumnToAssign' => 1,],
-            'Transfer numerar'      => ['AssignmentType' => 'Key', 'ColumnToAssign' => 1,],
-            'TRANSILVANIA POST SR'  => [
+            'Cumparare valuta'                     => ['AssignmentType' => 'Key', 'ColumnToAssign' => 1,],
+            'Transfer numerar'                     => ['AssignmentType' => 'Key', 'ColumnToAssign' => 1,],
+            'TRANSILVANIA POST SR'                 => [
                 'Amount'         => $floatAmount,
                 'AssignmentType' => 'ValueDifferentForDebitAndCredit',
-                'DCvalues'       => ['Debit' => 'Plata factura cumparare', 'Credit' => 'Incasare',],
+                'DCvalues'       => ['Debit' => 'Plata factura', 'Credit' => 'Incasare',],
                 'ColumnToAssign' => 1,
             ],
-            'DANIELA MARCU'         => [
+            'DANIELA MARCU'                        => [
                 'Amount'         => $floatAmount,
                 'AssignmentType' => 'ValueDifferentForDebitAndCredit',
                 'DCvalues'       => ['Debit' => 'Plata', 'Credit' => 'Incasare',],
                 'ColumnToAssign' => 1,
             ],
-            'GLS GENERAL LOGISTIC'  => [
+            'GLS GENERAL LOGISTIC'                 => [
                 'Amount'         => $floatAmount,
                 'AssignmentType' => 'ValueDifferentForDebitAndCredit',
                 'DCvalues'       => ['Debit' => 'Plata ramburs', 'Credit' => 'Incasare ramburs',],
                 'ColumnToAssign' => 1,
             ],
-            'Dobanda'               => [
+            'ANVL LEASING VERMIETUNGSGESELLSCHAFT' => [
+                'Amount'         => $floatAmount,
+                'AssignmentType' => 'ValueDifferentForDebitAndCredit',
+                'DCvalues'       => ['Debit' => 'Plata factura', 'Credit' => 'Incasare',],
+                'ColumnToAssign' => 1,
+            ],
+            'BALDAU STEFANIA MIHAELA'              => [
+                'Amount'         => $floatAmount,
+                'AssignmentType' => 'ValueDifferentForDebitAndCredit',
+                'DCvalues'       => ['Debit' => 'Plata factura', 'Credit' => 'Incasare',],
+                'ColumnToAssign' => 1,
+            ],
+            'CM BEAUTY STORE SRL'                  => [
+                'Amount'         => $floatAmount,
+                'AssignmentType' => 'ValueDifferentForDebitAndCredit',
+                'DCvalues'       => ['Debit' => 'Plata factura', 'Credit' => 'Incasare',],
+                'ColumnToAssign' => 1,
+            ],
+            /* 'MARCMAN SRL'                          => [
+              'Amount'         => $floatAmount,
+              'AssignmentType' => 'ValueDifferentForDebitAndCredit',
+              'DCvalues'       => ['Debit' => 'Plata factura', 'Credit' => 'Incasare',],
+              'ColumnToAssign' => 1,
+              ], */
+            'POS Fee-'                             => [
+                'Amount'         => $floatAmount,
+                'AssignmentType' => 'ValuePlusBeneficiaryAndPartner',
+                'DCvalues'       => ['Debit' => 'POS Fee', 'Credit' => 'POS Fee',],
+                'ColumnToAssign' => 1,
+            ],
+            'Dobanda'                              => [
                 'AssignmentType'        => 'ValuePlusDocumentDate',
                 'ValuePlusDocumentDate' => 'Dobanda',
                 'ColumnToAssign'        => 1,
             ],
         ]);
-        if (strlen(str_ireplace('-POS Fee-', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]  = 'POS Fee';
-            $strRest                                            = explode('-', $aryLinePieces[1]);
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $strRest[2];
-            // avoiding overwriting Partner property
-            $this->assignOnlyIfNotAlreadyWithExtraCheck($this->aryCol[16], $this->aryCol[12]);
-        } elseif (!array_key_exists($this->aryCol[1], $this->aryRsltLn[$this->intOpNo])) {
+        if (!array_key_exists($this->aryCol[1], $this->aryRsltLn[$this->intOpNo])) {
             $this->assignOnlyIfNotAlready($this->aryCol[1], 'Altele');
             $strRest                                            = $aryLinePieces[1];
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
@@ -328,18 +378,16 @@ class CsvGaranti
                 'replace numeric sequence followed by single space',
                 'trim',
             ]);
-            // avoiding overwriting Partner property
-            $this->assignOnlyIfNotAlreadyWithExtraCheck($this->aryCol[16], $this->aryCol[12]);
         }
         if ($this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] == 'Depunere numerar') {
             $this->processDocumentDateDifferentThanPostingDate($aryLinePieces);
+            $strDetails = $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]];
             if (!array_key_exists($this->aryCol[12], $this->aryRsltLn[$this->intOpNo])) {
                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = trim(''
-                        . substr($this->aryRsltLn[$this->intOpNo][$this->aryCol[9]], 0, strlen(''
-                                        . $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]]) - 8));
+                        . substr($strDetails, 0, strlen($strDetails) - 8));
             }
-            // avoiding overwriting Partner property
-            $this->assignOnlyIfNotAlreadyWithExtraCheck($this->aryCol[16], $this->aryCol[12]);
         }
+        // avoiding overwriting Partner property
+        $this->assignOnlyIfNotAlreadyWithExtraCheck($this->aryCol[16], $this->aryCol[12]);
     }
 }
