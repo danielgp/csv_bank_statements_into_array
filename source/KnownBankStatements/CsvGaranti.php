@@ -74,6 +74,10 @@ class CsvGaranti
                 $bolProceed = true;
             }
             if ($bolProceed) {
+                if ($strIdentifier == 'DCvalues') {
+                    $this->assignBasedOnDebitOrCredit($aryIdentifier['Amount'], 1, ''
+                            . $aryIdentifier['DCvalues']['Debit'], $aryIdentifier['DCvalues']['Credit']);
+                }
                 $this->assignBasedOnIdentifierSingle($strIdentifierAttributes);
             }
         }
@@ -81,13 +85,6 @@ class CsvGaranti
 
     private function assignBasedOnIdentifierSingle($aryParams)
     {
-        if (array_key_exists('DCvalues', $aryParams)) {
-            $aryDebitCredit = [
-                'C' => $aryParams['DCvalues']['Credit'],
-                'D' => $aryParams['DCvalues']['Debit'],
-            ];
-            $this->assignBasedOnDebitOrCredit($aryParams['Amount'], 1, $aryDebitCredit['D'], $aryDebitCredit['C']);
-        }
         if (in_array($aryParams['AssignmentType'], [
                     'Key',
                     'Value',
