@@ -38,6 +38,15 @@ trait TraitBasicFunctionality
     protected $intOpNo                                 = 0;
     protected $bolDocumentDateDifferentThanPostingDate = true;
 
+    private function addDebitOrCredit($floatAmount, $intColumnNumberForDebit, $intColumnNumberForCredit)
+    {
+        if ($floatAmount < 0) {
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumnNumberForDebit]] = abs($floatAmount);
+        } else {
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumnNumberForCredit]] = $floatAmount;
+        }
+    }
+
     private function arrayOutputColumnLine()
     {
         return [
@@ -59,6 +68,32 @@ trait TraitBasicFunctionality
             15 => 'DetailsComision',
             16 => 'Partner',
         ];
+    }
+
+    private function assignBasedOnDebitOrCredit($floatAmount, $intColumn, $strDebit, $strCredit)
+    {
+        if ($floatAmount < 0) {
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumn]] = $strDebit;
+        } else {
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumn]] = $strCredit;
+        }
+    }
+
+    private function assignOnlyIfNotAlready($strColumnToAssignTo, $strValueToAssign)
+    {
+        if (!is_null($strValueToAssign) && !array_key_exists($strColumnToAssignTo, $this->aryRsltLn[$this->intOpNo])) {
+            $this->aryRsltLn[$this->intOpNo][$strColumnToAssignTo] = $strValueToAssign;
+        }
+    }
+
+    private function assignOnlyIfNotAlreadyWithExtraCheck($strColumnToAssignTo, $strColumnToAssignFrom)
+    {
+        if (array_key_exists($strColumnToAssignFrom, $this->aryRsltLn[$this->intOpNo])) {
+            $strValueToAssign = $this->aryRsltLn[$this->intOpNo][$strColumnToAssignFrom];
+            if (!array_key_exists($strColumnToAssignTo, $this->aryRsltLn[$this->intOpNo])) {
+                $this->aryRsltLn[$this->intOpNo][$strColumnToAssignTo] = $strValueToAssign;
+            }
+        }
     }
 
     private function knownHeaders()
@@ -89,6 +124,14 @@ trait TraitBasicFunctionality
             }
         }
         return $strResult;
+    }
+
+    private function processDocumentDate($strDocumentDate)
+    {
+        if ($this->bolDocumentDateDifferentThanPostingDate) {
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = ''
+                    . $this->transformCustomDateFormatIntoSqlDate($strDocumentDate, 'dd.MM.yyyy');
+        }
     }
 
     private function transformAmountFromStringIntoNumber($strAmount)

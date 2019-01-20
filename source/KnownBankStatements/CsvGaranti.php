@@ -47,24 +47,6 @@ class CsvGaranti
         $this->bolDocumentDateDifferentThanPostingDate = $bolDocDateDiffersThanPostDate;
     }
 
-    private function addDebitOrCredit($floatAmount, $intColumnNumberForDebit, $intColumnNumberForCredit)
-    {
-        if ($floatAmount < 0) {
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumnNumberForDebit]] = abs($floatAmount);
-        } else {
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumnNumberForCredit]] = $floatAmount;
-        }
-    }
-
-    private function assignBasedOnDebitOrCredit($floatAmount, $intColumn, $strDebit, $strCredit)
-    {
-        if ($floatAmount < 0) {
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumn]] = $strDebit;
-        } else {
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[$intColumn]] = $strCredit;
-        }
-    }
-
     private function assignBasedOnIdentifier($strHaystack, $floatAmount, $aryIdentifier)
     {
         foreach ($aryIdentifier as $strIdentifier => $strIdentifierAttributes) {
@@ -115,23 +97,6 @@ class CsvGaranti
         }
     }
 
-    private function assignOnlyIfNotAlready($strColumnToAssignTo, $strValueToAssign)
-    {
-        if (!is_null($strValueToAssign) && !array_key_exists($strColumnToAssignTo, $this->aryRsltLn[$this->intOpNo])) {
-            $this->aryRsltLn[$this->intOpNo][$strColumnToAssignTo] = $strValueToAssign;
-        }
-    }
-
-    private function assignOnlyIfNotAlreadyWithExtraCheck($strColumnToAssignTo, $strColumnToAssignFrom)
-    {
-        if (array_key_exists($strColumnToAssignFrom, $this->aryRsltLn[$this->intOpNo])) {
-            $strValueToAssign = $this->aryRsltLn[$this->intOpNo][$strColumnToAssignFrom];
-            if (!array_key_exists($strColumnToAssignTo, $this->aryRsltLn[$this->intOpNo])) {
-                $this->aryRsltLn[$this->intOpNo][$strColumnToAssignTo] = $strValueToAssign;
-            }
-        }
-    }
-
     private function initializeHeader($strFileNameToProcess)
     {
         $this->aryRsltHdr['FileName'] = pathinfo($strFileNameToProcess, PATHINFO_FILENAME);
@@ -169,14 +134,6 @@ class CsvGaranti
                             . str_replace(' K', '', trim($aryLinePieces[1])), -5) . '/' . substr($aryLinePieces[0], -4);
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate(''
                     . $strDocumentDate, 'MM/dd/yyyy');
-        }
-    }
-
-    private function processDocumentDate($strDocumentDate)
-    {
-        if ($this->bolDocumentDateDifferentThanPostingDate) {
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = ''
-                    . $this->transformCustomDateFormatIntoSqlDate($strDocumentDate, 'dd.MM.yyyy');
         }
     }
 
