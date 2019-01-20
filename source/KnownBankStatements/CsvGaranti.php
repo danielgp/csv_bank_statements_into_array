@@ -36,7 +36,9 @@ class CsvGaranti
 
     use TraitBasicFunctionality;
 
-    protected $intRegisteredComision;
+    protected $bolHeaderFound        = false;
+    protected $intEmptyLineCounter   = 0;
+    protected $intRegisteredComision = 0;
     protected $isRegularTransaction;
 
     public function __construct($bolDocDateDiffersThanPostDate)
@@ -147,31 +149,11 @@ class CsvGaranti
     public function processCsvFileFromGaranti($strFileNameToProcess, $aryLn)
     {
         $this->initializeHeader($strFileNameToProcess);
-        $intEmptyLineCounter         = 0;
-        $this->intRegisteredComision = 0;
-        $aryHeaderToMap              = $this->knownHeaders();
-        $bolHeaderFound              = false;
+        $aryHeaderToMap = $this->knownHeaders();
         foreach ($aryLn as $intLineNumber => $strLineContent) {
             $aryLinePieces = explode(';', str_replace(':', '', $strLineContent));
-            if ($this->isCurrentLineTheHeader($aryLinePieces)) {
-                $bolHeaderFound = true;
-            } elseif (trim($strLineContent) == '') {
-                $intEmptyLineCounter++;
-            } elseif ($bolHeaderFound) {
-                $this->isRegularTransaction = true;
-                $floatAmount                = $this->transformAmountFromStringIntoNumber($aryLinePieces[2]);
-                $this->processTransactions($aryLinePieces, [
-                    'Amount' => $floatAmount,
-                    'LineNo' => $intLineNumber,
-                ]);
-                $intEmptyLineCounter        = 0;
-            } elseif (array_key_exists($aryLinePieces[0], $aryHeaderToMap)) {
-                $this->aryRsltHdr[$aryHeaderToMap[$aryLinePieces[0]]['Name']] = $this->applyEtlConversions(''
-                        . $aryLinePieces[1], $aryHeaderToMap[$aryLinePieces[0]]['ETL']);
-            } else {
-                $this->aryRsltHdr[$aryLinePieces[0]] = trim($aryLinePieces[1]);
-            }
-            if ($intEmptyLineCounter == 2) {
+            $this->processLineByLine($aryHeaderToMap, $strLineContent, $aryLinePieces, $intLineNumber);
+            if ($this->intEmptyLineCounter == 2) {
                 return [
                     'Header' => $this->aryRsltHdr,
                     'Lines'  => $this->aryRsltLn,
@@ -207,6 +189,28 @@ class CsvGaranti
                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = trim(''
                         . substr($strDetails, 0, strlen($strDetails) - 8));
             }
+        }
+    }
+
+    private function processLineByLine($aryHeaderToMap, $strLineContent, $aryLinePieces, $intLineNumber)
+    {
+        if ($this->isCurrentLineTheHeader($aryLinePieces)) {
+            $this->bolHeaderFound = true;
+        } elseif (trim($strLineContent) == '') {
+            $this->intEmptyLineCounter++;
+        } elseif ($this->bolHeaderFound) {
+            $this->isRegularTransaction = true;
+            $floatAmount                = $this->transformAmountFromStringIntoNumber($aryLinePieces[2]);
+            $this->processTransactions($aryLinePieces, [
+                'Amount' => $floatAmount,
+                'LineNo' => $intLineNumber,
+            ]);
+            $this->intEmptyLineCounter  = 0;
+        } elseif (array_key_exists($aryLinePieces[0], $aryHeaderToMap)) {
+            $this->aryRsltHdr[$aryHeaderToMap[$aryLinePieces[0]]['Name']] = $this->applyEtlConversions(''
+                    . $aryLinePieces[1], $aryHeaderToMap[$aryLinePieces[0]]['ETL']);
+        } else {
+            $this->aryRsltHdr[$aryLinePieces[0]] = trim($aryLinePieces[1]);
         }
     }
 
