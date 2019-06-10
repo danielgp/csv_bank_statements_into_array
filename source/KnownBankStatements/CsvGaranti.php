@@ -40,6 +40,7 @@ class CsvGaranti
     protected $intEmptyLineCounter   = 0;
     protected $intRegisteredComision = 0;
     protected $isRegularTransaction;
+    private   $decAmountFromPriorTransaction = 0;
 
     public function __construct($bolDocDateDiffersThanPostDate)
     {
@@ -200,21 +201,24 @@ class CsvGaranti
 
     private function processTransactions($aryLinePieces, $aryOtherParameters)
     {
-        if (($this->intOpNo != 0) && ($this->intRegisteredComision == 0)) {
-            if (trim($aryLinePieces[1]) == $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]]) {
-                $this->isRegularTransaction = false;
-                $this->intRegisteredComision++;
-            }
-            if (strlen(str_replace('COMISION PLATA', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
-                $this->isRegularTransaction                         = false;
-                $this->intRegisteredComision++;
-                $this->aryRsltLn[$this->intOpNo][$this->aryCol[15]] = trim($aryLinePieces[1]);
+        if ($this->decAmountFromPriorTransaction != $aryOtherParameters['Amount']) {
+            if (($this->intOpNo != 0) && ($this->intRegisteredComision == 0)) {
+                if (trim($aryLinePieces[1]) == $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]]) {
+                    $this->isRegularTransaction = false;
+                    $this->intRegisteredComision++;
+                }
+                if (strlen(str_replace('COMISION PLATA', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
+                    $this->isRegularTransaction                         = false;
+                    $this->intRegisteredComision++;
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[15]] = trim($aryLinePieces[1]);
+                }
             }
         }
         if ($this->isRegularTransaction) {
             $this->intOpNo++;
             $this->processRegularLine($aryOtherParameters['Amount'], $aryOtherParameters['LineNo'], $aryLinePieces);
             $this->intRegisteredComision = 0;
+            $this->decAmountFromPriorTransaction = $aryOtherParameters['Amount'];
         } else {
             $this->addDebitOrCredit($aryOtherParameters['Amount'], 7, 8);
             $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] = [
