@@ -95,6 +95,30 @@
             "Credit": "Incasare ramburs"
         }
     },
+    "TRANSFER ONLINE INTRABANCAR": {
+        "AssignmentType": "Value",
+        "DCvalues": {
+            "Debit": "Transfer online intrabancar",
+            "Credit": "Transfer online intrabancar"
+        },
+        "Value": "Transfer online intrabancar"
+    },
+    "TRANSFER ONLINE INTERBANCAR": {
+        "AssignmentType": "Value",
+        "DCvalues": {
+            "Debit": "Transfer online interbancar",
+            "Credit": "Transfer online interbancar"
+        },
+        "Value": "Transfer online interbancar"
+    },
+    "TRANSFER RAMBURS": {
+        "AssignmentType": "Value",
+        "DCvalues": {
+            "Debit": "Transfer ramburs",
+            "Credit": "Transfer ramburs"
+        },
+        "Value": "Transfer ramburs"
+    },
     "Transfer Cont Cole": {
         "AssignmentType": "Value",
         "DCvalues": {
@@ -152,6 +176,13 @@
         }
     },
     "MARCMAN SRL": {
+        "AssignmentType": "ValueDifferentForDebitAndCredit",
+        "DCvalues": {
+            "Debit": "Plata factura",
+            "Credit": "Incasare"
+        }
+    },
+    "AROMASQUE PARFUMS SRL": {
         "AssignmentType": "ValueDifferentForDebitAndCredit",
         "DCvalues": {
             "Debit": "Plata factura",

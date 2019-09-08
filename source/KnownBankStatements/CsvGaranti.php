@@ -41,6 +41,10 @@ class CsvGaranti
     protected $intRegisteredComision = 0;
     protected $isRegularTransaction;
     private   $decAmountFromPriorTransaction = 0;
+    private   $arrayStringsToClean = [
+        'Detalii',
+        'TRANSFER ONLINE INTERBANCAR Beneficiar',
+    ];
 
     public function __construct($bolDocDateDiffersThanPostDate)
     {
@@ -82,7 +86,8 @@ class CsvGaranti
                 ])) {
             $this->assignOnlyIfNotAlready($aryParams['Column'], $aryParams[$aryParams['AssignmentType']]);
         } elseif (in_array($aryParams['AssignmentType'], ['ValueDifferentForDebitAndCredit'])) {
-            $this->assignOnlyIfNotAlready($this->aryCol[12], trim($aryParams['Key']));
+            $this->assignOnlyIfNotAlready($this->aryCol[12], '' .
+                str_replace($this->arrayStringsToClean, '', trim($aryParams['Key'])));
         }
         if (in_array($aryParams['AssignmentType'], ['ValuePlusBeneficiaryAndPartner'])) {
             $strRest          = $aryParams['CleanedString'];
@@ -91,7 +96,8 @@ class CsvGaranti
                 'replace numeric sequence followed by single space',
                 'trim',
             ]);
-            $this->assignOnlyIfNotAlready($this->aryCol[12], $strValueToAssign);
+            $this->assignOnlyIfNotAlready($this->aryCol[12], '' .
+                str_replace($this->arrayStringsToClean, '', $strValueToAssign));
         }
         if (in_array($aryParams['AssignmentType'], ['ValuePlusDocumentDate'])) {
             $this->processDocumentDate(trim($aryParams['CleanedString']));
@@ -142,10 +148,11 @@ class CsvGaranti
     {
         if ($this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] == 'Depunere numerar') {
             $this->processDocumentDateDifferentThanPostingDate($aryLinePieces);
-            $strDetails = $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]];
+            $strDetails = str_replace($this->arrayStringsToClean, '', ''
+                . $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]]);
             if (!array_key_exists($this->aryCol[12], $this->aryRsltLn[$this->intOpNo])) {
-                $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = trim(''
-                        . substr($strDetails, 0, strlen($strDetails) - 8));
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = ''
+                    . trim(substr($strDetails, 0, strlen($strDetails) - 8));
             }
         }
     }
@@ -182,17 +189,19 @@ class CsvGaranti
         $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]] = trim($aryLinePieces[1]);
         $this->addDebitOrCredit($floatAmount, 2, 3);
         $aryParameters                                     = $this->getArrayFromJsonFile(__DIR__, ''
-                . 'CsvGarantiLineMatchingRules.min.json');
+                . 'CsvGarantiLineMatchingRules.json');
+                //. 'CsvGarantiLineMatchingRules.min.json');
         $this->assignBasedOnIdentifier($aryLinePieces[1], $floatAmount, $aryParameters);
         if (!array_key_exists($this->aryCol[1], $this->aryRsltLn[$this->intOpNo])) {
             $this->assignOnlyIfNotAlready($this->aryCol[1], 'Altele');
-            $strRest                                            = $aryLinePieces[1];
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $this->applyStringManipulationsArray($strRest, [
+            $strRest        = str_replace($this->arrayStringsToClean, '', $aryLinePieces[1]);
+            $strBeneficiary = $this->applyStringManipulationsArray($strRest, [
                 'remove dot',
                 'remove slash',
                 'replace numeric sequence followed by single space',
                 'trim',
             ]);
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $strBeneficiary;
         }
         $this->processFurtherCashDeposit($aryLinePieces);
         // avoiding overwriting Partner property
@@ -210,7 +219,8 @@ class CsvGaranti
                 if (strlen(str_replace('COMISION PLATA', '', $aryLinePieces[1])) != strlen($aryLinePieces[1])) {
                     $this->isRegularTransaction                         = false;
                     $this->intRegisteredComision++;
-                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[15]] = trim($aryLinePieces[1]);
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[15]] = str_replace($this->arrayStringsToClean, '' 
+                        . '', trim($aryLinePieces[1]));
                 }
             }
         }
