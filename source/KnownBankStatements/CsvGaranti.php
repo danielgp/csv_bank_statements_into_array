@@ -146,7 +146,11 @@ class CsvGaranti
 
     private function processFurtherCashDeposit($aryLinePieces)
     {
-        if ($this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] == 'Depunere numerar') {
+        $knownOperations = [
+            'Depunere numerar', 
+            'Transfer online intrabancar',
+        ];
+        if (in_array($this->aryRsltLn[$this->intOpNo][$this->aryCol[1]], $knownOperations)) {
             $this->processDocumentDateDifferentThanPostingDate($aryLinePieces);
             $strDetails = str_replace($this->arrayStringsToClean, '', ''
                 . $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]]);
@@ -189,8 +193,7 @@ class CsvGaranti
         $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]] = trim($aryLinePieces[1]);
         $this->addDebitOrCredit($floatAmount, 2, 3);
         $aryParameters                                     = $this->getArrayFromJsonFile(__DIR__, ''
-                . 'CsvGarantiLineMatchingRules.json');
-                //. 'CsvGarantiLineMatchingRules.min.json');
+                . 'CsvGarantiLineMatchingRules.min.json');
         $this->assignBasedOnIdentifier($aryLinePieces[1], $floatAmount, $aryParameters);
         if (!array_key_exists($this->aryCol[1], $this->aryRsltLn[$this->intOpNo])) {
             $this->assignOnlyIfNotAlready($this->aryCol[1], 'Altele');
