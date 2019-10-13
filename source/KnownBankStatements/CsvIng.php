@@ -33,8 +33,9 @@ namespace danielgp\csv_bank_statements_into_array;
  */
 class CsvIng
 {
-
     use TraitBasicFunctionality;
+    
+    private $aColumnsOrder = [];
 
     public function __construct($bolDocDateDiffersThanPostDate)
     {
@@ -54,11 +55,25 @@ class CsvIng
         }
     }
 
+    private function addDebitOrCreditAssigned($arrayLinePieces, $strColumnForDebit, $strColumnForCredit)
+    {
+        $strDebit = $arrayLinePieces[array_search('Debit', $this->aColumnsOrder)];
+        $numberDebitAmount = $this->transformAmountFromStringIntoNumber($strDebit);
+        if ($numberDebitAmount != 0) {
+            $this->aryRsltLn[$this->intOpNo][$strColumnForDebit] = $numberDebitAmount;
+        }
+        $strCredit = $arrayLinePieces[array_search('Credit', $this->aColumnsOrder)];
+        $numberCreditAmount = $this->transformAmountFromStringIntoNumber($strCredit);
+        if ($numberCreditAmount != 0) {
+            $this->aryRsltLn[$this->intOpNo][$strColumnForCredit] = $numberCreditAmount;
+        }
+    }
+
     private function assignBasedOnIdentifier($strHaystack, $aryIdentifier)
     {
         foreach ($aryIdentifier as $strIdentifier => $strIdentifierAttributes) {
             if (substr($strHaystack, 0, strlen($strIdentifier)) == $strIdentifier) {
-                $strFinalString = str_ireplace($strIdentifier, '', $strHaystack);
+                $strFinalString = trim(str_ireplace($strIdentifier, '', $strHaystack));
                 if ($strIdentifierAttributes['AssignmentType'] === 'Header') {
                     $strColumnToAssign = $strIdentifierAttributes['Label'];
                     $strHaystack       = $strIdentifierAttributes['S'];
@@ -111,8 +126,8 @@ class CsvIng
         $strJustFileName     = pathinfo($strFileNameToProcess);
         $arrayFileNamePieces = explode('_', $strJustFileName['filename']);
         $this->aryRsltHdr    = [
-            'Account'  => $arrayFileNamePieces[2],
-            'Currency' => $arrayFileNamePieces[3],
+            'Account'  => (count($arrayFileNamePieces) >= 3 ? $arrayFileNamePieces[2] : ''),
+            'Currency' => (count($arrayFileNamePieces) >= 4 ? $arrayFileNamePieces[3] : ''),
             'FileName' => $strJustFileName['basename'],
         ];
     }
@@ -141,19 +156,101 @@ class CsvIng
     {
         $this->initializeHeader($strFileNameToProcess);
         foreach ($aryLn as $intLineNumber => $strLineContent) {
-            $arrayLinePieces = explode(',,', str_ireplace(["\n", "\r"], '', $strLineContent));
+            if ($this->containsCaseInsesitiveString(',Detalii tranzactie,Debit', $strLineContent)) {
+                $this->aColumnsOrder = explode(',', trim($strLineContent));
+            }
+            if ($this->aColumnsOrder != []) {
+                $gDoubleQuotePosition = strpos($strLineContent, '"');
+                if ($gDoubleQuotePosition !== false) {
+                    $aDoubleQuotePositions = [];
+                    $intLineLength = strlen($strLineContent);
+                    $aDoubleQuotePositions[] = $gDoubleQuotePosition;
+                    $gDoubleQuotePosition++;
+                    for($intCounter = $gDoubleQuotePosition; $intCounter < $intLineLength; $intCounter++) {
+                        if (substr($strLineContent, $intCounter, 1) == '"') {
+                            $aDoubleQuotePositions[] = $intCounter;
+                        }
+                    }
+                    $intCycles = count($aDoubleQuotePositions) / 2;
+                    $aLinePiecesToRebuild = [];
+                    $aLinePiecesToRebuild[] = substr($strLineContent, 0, ($gDoubleQuotePosition - 1));
+                    for($intCounter = 1; $intCounter <= $intCycles; $intCounter++) {
+                        $intStarting = $aDoubleQuotePositions[(($intCounter - 1) * 2)];
+                        $intEnding = $aDoubleQuotePositions[(($intCounter - 1) * 2 + 1)];
+                        $aLinePiecesToRebuild[] = str_replace(',', '^', substr($strLineContent 
+                            . '', $intStarting, ($intEnding - $intStarting)));
+                        if ($intCounter != $intCycles) {
+                            $intNext = $aDoubleQuotePositions[(($intCounter - 1) * 2 + 2)];
+                            $aLinePiecesToRebuild[] = substr($strLineContent, $intEnding, ($intNext - $intEnding));
+                        }
+                    }
+                    $aLinePiecesToRebuild[] = substr($strLineContent, $intEnding, 1);
+                    $strLineContent = implode('', $aLinePiecesToRebuild);
+                }
+                $arrayLinePieces = explode(',', str_ireplace(["\n", "\r"], '', $strLineContent));
+            } else {
+                $arrayLinePieces = explode(',,', str_ireplace(["\n", "\r"], '', $strLineContent));
+            }
             if ($this->containsCaseInsesitiveString('ING Bank N.V.', $strLineContent)) {
                 $arrayCrtPieces             = explode('-', $arrayLinePieces[0]);
                 $this->aryRsltHdr['Agency'] = trim($arrayCrtPieces[1]);
-                return ['Header' => $this->aryRsltHdr, 'Lines' => $this->aryRsltLn,];
             }
             $this->processRegularLine($strLineContent, $intLineNumber, $arrayLinePieces);
         }
+        return ['Header' => $this->aryRsltHdr, 'Lines' => $this->aryRsltLn,];
     }
 
     private function processRegularLine($strLineContent, $intLineNumber, $arrayLinePieces)
     {
-        if ($this->isCommission($strLineContent, $arrayLinePieces[1])) {
+        if ($this->aColumnsOrder != []) {
+            $strTransactionDetails = $arrayLinePieces[array_search('Detalii tranzactie', $this->aColumnsOrder)];
+            if ($this->isCommission($strLineContent, $strTransactionDetails)) {
+                $this->intOpNo++;
+                $this->addDebitOrCreditAssigned($arrayLinePieces, $this->aryCol[7], $this->aryCol[8]);
+                if (array_key_exists('LineWithinFile', $this->aryRsltLn[$this->intOpNo])) {
+                    $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] .= ',' . ($intLineNumber + 1);
+                } else {
+                    $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] = ($intLineNumber + 1);
+                }
+            } elseif (!in_array($arrayLinePieces[array_search('Data', $this->aColumnsOrder)], ['', 'Data'])) {
+                $aTransactionTypeWithPriorCommission = [
+                    "Transfer Home'Bank", 
+                    'Suma transferata din linia de credit',
+                ];
+                if (($this->aryRsltLn[$this->intOpNo][$this->aryCol[2]] != 0)
+                    || ($this->aryRsltLn[$this->intOpNo][$this->aryCol[3]] != 0)) {
+                    $this->intOpNo++;
+                } elseif (!in_array($strTransactionDetails, $aTransactionTypeWithPriorCommission)) {
+                    $this->intOpNo++;
+                }
+                if (array_key_exists('LineWithinFile', $this->aryRsltLn[$this->intOpNo])) {
+                    $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] .= ',' . ($intLineNumber + 1);
+                } else {
+                    $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] = ($intLineNumber + 1);
+                }
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[0]] = '' 
+                    . $arrayLinePieces[array_search('Data', $this->aColumnsOrder)];
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = str_replace(['\'', '"'], '', ''
+                    . $strTransactionDetails);
+                $this->addDebitOrCreditAssigned($arrayLinePieces, $this->aryCol[2], $this->aryCol[3]);
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate(''
+                        . $arrayLinePieces[0], 'dd MMMM yyyy');
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]];
+            } elseif (substr($strLineContent, 0, 3) == ',,,') {
+                // "Nr. card:" will be ignored as only 4 characters are shown all other being replaced with ****
+                $this->assignBasedOnIdentifier($arrayLinePieces[3], [
+                    'Data:'                       => ['AssignmentType' => 'SqlDate', 'ColumnToAssign' => 5,],
+                    'Detalii:'                    => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 9,],
+                    'Comision administrare card:' => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 9,],
+                    'Banca:'                      => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 13,],
+                    'Referinta:'                  => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 14,],
+                    'Terminal:'                   => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 6,],
+                    'In contul:'                  => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 10,],
+                    'Din contul:'                 => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 11,],
+                    'Beneficiar:'                 => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 12,],
+                ]);
+            }
+        } elseif ($this->isCommission($strLineContent, $arrayLinePieces[1])) {
             $this->addDebitOrCredit($arrayLinePieces, $this->aryCol[7], $this->aryCol[8]);
             $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] .= ', ' . ($intLineNumber + 1);
         } elseif ($this->isTwoDigitNumberFollowedBySpace($strLineContent)) {

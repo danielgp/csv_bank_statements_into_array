@@ -144,6 +144,7 @@ trait TraitBasicFunctionality
                 'remove double quotes',
                 'remove dot',
                 'replace comma with dot',
+                'replace circumflex accent with dot',
                 'trim',
             ]);
             $intAmount        = filter_var($strAmountCleaned, FILTER_VALIDATE_FLOAT);
