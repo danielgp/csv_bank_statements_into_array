@@ -34,7 +34,7 @@ namespace danielgp\csv_bank_statements_into_array;
 class CsvIng
 {
     use TraitBasicFunctionality;
-    
+
     private $aColumnsOrder = [];
 
     public function __construct($bolDocDateDiffersThanPostDate)
@@ -57,12 +57,12 @@ class CsvIng
 
     private function addDebitOrCreditAssigned($arrayLinePieces, $strColumnForDebit, $strColumnForCredit)
     {
-        $strDebit = $arrayLinePieces[array_search('Debit', $this->aColumnsOrder)];
+        $strDebit          = $arrayLinePieces[array_search('Debit', $this->aColumnsOrder)];
         $numberDebitAmount = $this->transformAmountFromStringIntoNumber($strDebit);
         if ($numberDebitAmount != 0) {
             $this->aryRsltLn[$this->intOpNo][$strColumnForDebit] = $numberDebitAmount;
         }
-        $strCredit = $arrayLinePieces[array_search('Credit', $this->aColumnsOrder)];
+        $strCredit          = $arrayLinePieces[array_search('Credit', $this->aColumnsOrder)];
         $numberCreditAmount = $this->transformAmountFromStringIntoNumber($strCredit);
         if ($numberCreditAmount != 0) {
             $this->aryRsltLn[$this->intOpNo][$strColumnForCredit] = $numberCreditAmount;
@@ -85,6 +85,11 @@ class CsvIng
                     'Column'         => $strColumnToAssign,
                 ];
                 $this->assignBasedOnIdentifierSingle($strHaystack, $strFinalString, $aryParameters);
+                if ($strIdentifier == 'Data:') {
+                    $strAut                                             = substr($strHaystack
+                            . '', strpos($strHaystack, 'Autorizare:') + strlen('Autorizare:') + 1, 100);
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[18]] = $strAut;
+                }
             }
         }
     }
@@ -105,6 +110,10 @@ class CsvIng
                 if (!array_key_exists($this->aryCol[16], $this->aryRsltLn[$this->intOpNo])) {
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $strFinalString;
                 }
+                break;
+            case 'PlainWithoutLastCharacter':
+                $this->aryRsltLn[$this->intOpNo][$aryParams['Column']] = substr(''
+                        . str_replace(['.', '^'], ['', '.'], $strFinalString), 0, strlen($strFinalString) - 1);
                 break;
             case 'SqlDate':
                 $this->aryRsltLn[$this->intOpNo][$aryParams['Column']] = $this->transformCustomDateFormatIntoSqlDate(''
@@ -162,38 +171,40 @@ class CsvIng
             if ($this->aColumnsOrder != []) {
                 $gDoubleQuotePosition = strpos($strLineContent, '"');
                 if ($gDoubleQuotePosition !== false) {
-                    $aDoubleQuotePositions = [];
-                    $intLineLength = strlen($strLineContent);
+                    $aDoubleQuotePositions   = [];
+                    $intLineLength           = strlen($strLineContent);
                     $aDoubleQuotePositions[] = $gDoubleQuotePosition;
                     $gDoubleQuotePosition++;
-                    for($intCounter = $gDoubleQuotePosition; $intCounter < $intLineLength; $intCounter++) {
+                    for ($intCounter = $gDoubleQuotePosition; $intCounter < $intLineLength; $intCounter++) {
                         if (substr($strLineContent, $intCounter, 1) == '"') {
                             $aDoubleQuotePositions[] = $intCounter;
                         }
                     }
-                    $intCycles = count($aDoubleQuotePositions) / 2;
-                    $aLinePiecesToRebuild = [];
+                    $intCycles              = count($aDoubleQuotePositions) / 2;
+                    $aLinePiecesToRebuild   = [];
                     $aLinePiecesToRebuild[] = substr($strLineContent, 0, ($gDoubleQuotePosition - 1));
-                    for($intCounter = 1; $intCounter <= $intCycles; $intCounter++) {
-                        $intStarting = $aDoubleQuotePositions[(($intCounter - 1) * 2)];
-                        $intEnding = $aDoubleQuotePositions[(($intCounter - 1) * 2 + 1)];
-                        $aLinePiecesToRebuild[] = str_replace(',', '^', substr($strLineContent 
-                            . '', $intStarting, ($intEnding - $intStarting)));
+                    for ($intCounter = 1; $intCounter <= $intCycles; $intCounter++) {
+                        $intStarting            = $aDoubleQuotePositions[(($intCounter - 1) * 2)];
+                        $intEnding              = $aDoubleQuotePositions[(($intCounter - 1) * 2 + 1)];
+                        $aLinePiecesToRebuild[] = str_replace(',', '^', substr($strLineContent
+                                        . '', $intStarting, ($intEnding - $intStarting)));
                         if ($intCounter != $intCycles) {
-                            $intNext = $aDoubleQuotePositions[(($intCounter - 1) * 2 + 2)];
+                            $intNext                = $aDoubleQuotePositions[(($intCounter - 1) * 2 + 2)];
                             $aLinePiecesToRebuild[] = substr($strLineContent, $intEnding, ($intNext - $intEnding));
                         }
                     }
                     $aLinePiecesToRebuild[] = substr($strLineContent, $intEnding, 1);
-                    $strLineContent = implode('', $aLinePiecesToRebuild);
+                    $strLineContent         = implode('', $aLinePiecesToRebuild);
                 }
                 $arrayLinePieces = explode(',', str_ireplace(["\n", "\r"], '', $strLineContent));
             } else {
                 $arrayLinePieces = explode(',,', str_ireplace(["\n", "\r"], '', $strLineContent));
             }
             if ($this->containsCaseInsesitiveString('ING Bank N.V.', $strLineContent)) {
-                $arrayCrtPieces             = explode('-', $arrayLinePieces[0]);
-                $this->aryRsltHdr['Agency'] = trim($arrayCrtPieces[1]);
+                $arrayCrtPieces = explode('-', $arrayLinePieces[0]);
+                if (count($arrayCrtPieces) >= 2) {
+                    $this->aryRsltHdr['Agency'] = trim($arrayCrtPieces[1]);
+                }
             }
             $this->processRegularLine($strLineContent, $intLineNumber, $arrayLinePieces);
         }
@@ -214,24 +225,26 @@ class CsvIng
                 }
             } elseif (!in_array($arrayLinePieces[array_search('Data', $this->aColumnsOrder)], ['', 'Data'])) {
                 $aTransactionTypeWithPriorCommission = [
-                    "Transfer Home'Bank", 
+                    "Transfer Home'Bank",
                     'Suma transferata din linia de credit',
                 ];
-                if (($this->aryRsltLn[$this->intOpNo][$this->aryCol[2]] != 0)
-                    || ($this->aryRsltLn[$this->intOpNo][$this->aryCol[3]] != 0)) {
+                if (array_key_exists($this->intOpNo, $this->aryRsltLn) && (
+                        array_key_exists($this->aryCol[2], $this->aryRsltLn[$this->intOpNo]) || array_key_exists($this->aryCol[3], $this->aryRsltLn[$this->intOpNo])
+                        )
+                ) {
                     $this->intOpNo++;
                 } elseif (!in_array($strTransactionDetails, $aTransactionTypeWithPriorCommission)) {
                     $this->intOpNo++;
                 }
-                if (array_key_exists('LineWithinFile', $this->aryRsltLn[$this->intOpNo])) {
+                if (array_key_exists($this->intOpNo, $this->aryRsltLn) && array_key_exists('LineWithinFile', $this->aryRsltLn[$this->intOpNo])) {
                     $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] .= ',' . ($intLineNumber + 1);
                 } else {
                     $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] = ($intLineNumber + 1);
                 }
-                $this->aryRsltLn[$this->intOpNo][$this->aryCol[0]] = '' 
-                    . $arrayLinePieces[array_search('Data', $this->aColumnsOrder)];
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[0]] = ''
+                        . $arrayLinePieces[array_search('Data', $this->aColumnsOrder)];
                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = str_replace(['\'', '"'], '', ''
-                    . $strTransactionDetails);
+                        . $strTransactionDetails);
                 $this->addDebitOrCreditAssigned($arrayLinePieces, $this->aryCol[2], $this->aryCol[3]);
                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate(''
                         . $arrayLinePieces[0], 'dd MMMM yyyy');
@@ -239,15 +252,54 @@ class CsvIng
             } elseif (substr($strLineContent, 0, 3) == ',,,') {
                 // "Nr. card:" will be ignored as only 4 characters are shown all other being replaced with ****
                 $this->assignBasedOnIdentifier($arrayLinePieces[3], [
-                    'Data:'                       => ['AssignmentType' => 'SqlDate', 'ColumnToAssign' => 5,],
-                    'Detalii:'                    => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 9,],
-                    'Comision administrare card:' => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 9,],
-                    'Banca:'                      => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 13,],
-                    'Referinta:'                  => ['AssignmentType' => 'Plain', 'ColumnToAssign' => 14,],
-                    'Terminal:'                   => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 6,],
-                    'In contul:'                  => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 10,],
-                    'Din contul:'                 => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 11,],
-                    'Beneficiar:'                 => ['AssignmentType' => 'PlainAndPartner', 'ColumnToAssign' => 12,],
+                    'Autorizare:'                 => [
+                        'AssignmentType' => 'Plain',
+                        'ColumnToAssign' => 18,
+                    ],
+                    'Banca:'                      => [
+                        'AssignmentType' => 'Plain',
+                        'ColumnToAssign' => 13,
+                    ],
+                    'Beneficiar:'                 => [
+                        'AssignmentType' => 'PlainAndPartner',
+                        'ColumnToAssign' => 12,
+                    ],
+                    'Comision administrare card:' => [
+                        'AssignmentType' => 'Plain',
+                        'ColumnToAssign' => 9,
+                    ],
+                    'Data:'                       => [
+                        'AssignmentType' => 'SqlDate',
+                        'ColumnToAssign' => 5,
+                    ],
+                    'Detalii:'                    => [
+                        'AssignmentType' => 'Plain',
+                        'ColumnToAssign' => 9,
+                    ],
+                    'Din contul:'                 => [
+                        'AssignmentType' => 'PlainAndPartner',
+                        'ColumnToAssign' => 11,
+                    ],
+                    'In contul:'                  => [
+                        'AssignmentType' => 'PlainAndPartner',
+                        'ColumnToAssign' => 10,
+                    ],
+                    'Nr. card:'                   => [
+                        'AssignmentType' => 'Plain',
+                        'ColumnToAssign' => 19,
+                    ],
+                    'Referinta:'                  => [
+                        'AssignmentType' => 'Plain',
+                        'ColumnToAssign' => 14,
+                    ],
+                    '"Suma:'                      => [
+                        'AssignmentType' => 'PlainWithoutLastCharacter',
+                        'ColumnToAssign' => 17,
+                    ],
+                    'Terminal:'                   => [
+                        'AssignmentType' => 'PlainAndPartner',
+                        'ColumnToAssign' => 6,
+                    ],
                 ]);
             }
         } elseif ($this->isCommission($strLineContent, $arrayLinePieces[1])) {

@@ -28,7 +28,6 @@ namespace danielgp\csv_bank_statements_into_array;
 
 trait TraitBasicFunctionality
 {
-
     use \danielgp\io_operations\InputOutputStrings,
         \danielgp\io_operations\InputOutputFiles;
 
@@ -67,6 +66,9 @@ trait TraitBasicFunctionality
             14 => 'Reference',
             15 => 'DetailsComision',
             16 => 'Partner',
+            17 => 'AmountOriginalCurrency',
+            18 => 'Authorization',
+            19 => 'CardNo',
         ];
     }
 
