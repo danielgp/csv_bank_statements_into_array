@@ -252,10 +252,6 @@ class CsvIng
             } elseif (substr($strLineContent, 0, 3) == ',,,') {
                 // "Nr. card:" will be ignored as only 4 characters are shown all other being replaced with ****
                 $this->assignBasedOnIdentifier($arrayLinePieces[3], [
-                    'Autorizare:'                 => [
-                        'AssignmentType' => 'Plain',
-                        'ColumnToAssign' => 18,
-                    ],
                     'Banca:'                      => [
                         'AssignmentType' => 'Plain',
                         'ColumnToAssign' => 13,
