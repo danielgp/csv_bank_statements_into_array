@@ -36,6 +36,8 @@ class CsvIng
     use TraitBasicFunctionality;
 
     private $aColumnsOrder = [];
+    private $aCsvHeaders = [];
+    private $strCsvFileContentType = null;
 
     public function __construct($bolDocDateDiffersThanPostDate)
     {
@@ -135,10 +137,16 @@ class CsvIng
         $strJustFileName     = pathinfo($strFileNameToProcess);
         $arrayFileNamePieces = explode('_', $strJustFileName['filename']);
         $this->aryRsltHdr    = [
-            'Account'  => (count($arrayFileNamePieces) >= 3 ? $arrayFileNamePieces[2] : ''),
-            'Currency' => (count($arrayFileNamePieces) >= 4 ? $arrayFileNamePieces[3] : ''),
             'FileName' => $strJustFileName['basename'],
         ];
+        foreach($arrayFileNamePieces as $strValue) {
+            if ((strlen($strValue) == 24) && (substr($strValue, 0, 2) == 'RO')) {
+                $this->aryRsltHdr['Account'] = $strValue;
+            }
+            if (strlen($strValue) == 3) {
+                $this->aryRsltHdr['Currency'] = $strValue;
+            }
+        }
     }
 
     private function isCommission($strLineContent, $strFirstPiece)
@@ -164,9 +172,13 @@ class CsvIng
     public function processCsvFileFromIng($strFileNameToProcess, $aryLn)
     {
         $this->initializeHeader($strFileNameToProcess);
+        $arrayLinePieces = null;
         foreach ($aryLn as $intLineNumber => $strLineContent) {
             if ($this->containsCaseInsesitiveString(',Detalii tranzactie,Debit', $strLineContent)) {
                 $this->aColumnsOrder = explode(',', trim($strLineContent));
+                if (is_null($this->strCsvFileContentType)) {
+                    $this->strCsvFileContentType = 'DebitCredit';
+                }
             }
             if ($this->aColumnsOrder != []) {
                 $gDoubleQuotePosition = strpos($strLineContent, '"');
@@ -200,18 +212,143 @@ class CsvIng
             } else {
                 $arrayLinePieces = explode(',,', str_ireplace(["\n", "\r"], '', $strLineContent));
             }
+            // as of 20201-03-06 a new CSV structure is born
+            if ($this->containsCaseInsesitiveString('numar cont;data procesarii;suma;valuta;', $strLineContent)) {
+                $this->aColumnsOrder = explode(',', trim($strLineContent));
+                if (is_null($this->strCsvFileContentType)) {
+                    $this->strCsvFileContentType = 'AccountAndFullBeneficiaryDetails';
+                }
+                $arrayLinePieces = str_getcsv(trim($strLineContent), ";");
+                if ($this->aCsvHeaders == []) {
+                    $this->aCsvHeaders = array_map('trim', $arrayLinePieces);
+                }
+            }
             if ($this->containsCaseInsesitiveString('ING Bank N.V.', $strLineContent)) {
                 $arrayCrtPieces = explode('-', $arrayLinePieces[0]);
                 if (count($arrayCrtPieces) >= 2) {
                     $this->aryRsltHdr['Agency'] = trim($arrayCrtPieces[1]);
                 }
             }
-            $this->processRegularLine($strLineContent, $intLineNumber, $arrayLinePieces);
+            if (($_SESSION['FirstName'] == 'Daniel') && ($_SESSION['LastName'] == 'Gheorghe')) {
+                $this->processRegularLine($strLineContent, $intLineNumber, $arrayLinePieces);
+            } else {
+                $this->processRegularLine($strLineContent, $intLineNumber, $arrayLinePieces);
+            }
         }
         return ['Header' => $this->aryRsltHdr, 'Lines' => $this->aryRsltLn,];
     }
 
     private function processRegularLine($strLineContent, $intLineNumber, $arrayLinePieces)
+    {
+        switch($this->strCsvFileContentType) {
+            default:
+            case 'DebitCredit':
+                $this->processRegularLineDebitCredit($strLineContent, $intLineNumber, $arrayLinePieces);
+                break;
+            case 'AccountAndFullBeneficiaryDetails':
+                if ($intLineNumber > 0) {
+                    $this->processRegularLineAccountAndFullBeneficiaryDetails($strLineContent, $intLineNumber, $arrayLinePieces);
+                }
+                break;
+        }
+    }
+
+    private function processRegularLineAccountAndFullBeneficiaryDetails($strLineContent, $intLineNumber, $arrayLinePieces)
+    {
+        $this->intOpNo++;
+        //echo '<hr/>Linia ' . $intLineNumber . ' ===> ' . $strLineContent . '<br>';
+        if ($intLineNumber > 0) {
+            //echo 'Tranzactia cu numarul ' . $this->intOpNo . '...';
+            $arrayContent = str_getcsv(trim($strLineContent), ";");
+            $arrayLineContent = array_combine($this->aCsvHeaders, $arrayContent);
+            //echo $this->showArrayWithinFloatingBox($arrayLineContent, 'red');
+            //echo $this->showArrayWithinFloatingBox($this->aryCol, 'blue');
+            foreach($arrayLineContent as $key => $value) {
+                switch($key) {
+                    case 'adresa beneficiar/ordonator':
+                        if (trim($value) != '') {
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[21]] = $value;
+                        }
+                        break;
+                    case 'cont beneficiar/ordonator':
+                        if ($value != '') {
+                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[11]] = $value;
+                        }
+                        break;
+                    case 'data procesarii':
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate($value, 'yyyyMMdd');
+                        break;
+                    case 'detalii tranzactie':
+                        if ($value != '') {
+                            if ($arrayLineContent['tip tranzactie'] == 'Comision pe operatiune') {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[15]] = $value;
+                            } else {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[9]] = $value;
+                            }
+                            preg_match_all('/\sData:\s[0-9]{2}-[0-9]{2}-[0-9]{4}$/', $value, $strDocumentDateDetails, PREG_SET_ORDER);
+                            if ($strDocumentDateDetails != []) {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate(str_replace(' Data: ', '', $strDocumentDateDetails[0][0]), 'dd-MM-yyyy');
+                            }
+                        }
+                        break;
+                    case 'numar cont':
+                        if ($value != '') {
+                            if (substr($arrayLineContent, 0, 1) == '-') {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $value;
+                            } else {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[10]] = $value;
+                            }
+                        }
+                        break;
+                    case 'nume beneficiar/ordonator':
+                        if ($value != '') {
+                            if (substr($arrayLineContent, 0, 1) == '-') {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[10]] = $value;
+                            } else {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $value;
+                            }
+                        }
+                        break;
+                    case 'suma':
+                        $intAmount = abs($this->transformAmountFromStringIntoNumber($value));
+                        if ($arrayLineContent['tip tranzactie'] == 'Comision pe operatiune') {
+                            if ($intAmount > 0) {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[8]] = $intAmount;
+                            } else {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[7]] = $intAmount;
+                            }
+                        } else {
+                            if ($intAmount > 0) {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[3]] = $intAmount;
+                            } else {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[2]] = $intAmount;
+                            }
+                        }
+                        break;
+                    case 'tip tranzactie':
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = $value;
+                        break;
+                    case 'valuta':
+                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[20]] = $value;
+                        break;
+                }
+            }
+            // fall-back scenario to get same value for DocumentDate as PostingDate when not specifically defined
+            if (!array_key_exists($this->aryCol[5], $this->aryRsltLn[$this->intOpNo])) {
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]];
+            }
+            if (array_key_exists('LineWithinFile', $this->aryRsltLn[$this->intOpNo])) {
+                $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] .= ',' . ($intLineNumber + 1);
+            } else {
+                $this->aryRsltLn[$this->intOpNo]['LineWithinFile'] = ($intLineNumber + 1);
+            }
+            ksort($this->aryRsltLn[$this->intOpNo]);
+            //echo $this->showArrayWithinFloatingBox($this->aryRsltLn[$this->intOpNo], 'green');
+            //echo '<div style="height:1px;float:none;clear:both;">&nbsp;</div>';
+        }
+    }
+
+    private function processRegularLineDebitCredit($strLineContent, $intLineNumber, $arrayLinePieces)
     {
         if ($this->aColumnsOrder != []) {
             $strTransactionDetails = $arrayLinePieces[array_search('Detalii tranzactie', $this->aColumnsOrder)];
