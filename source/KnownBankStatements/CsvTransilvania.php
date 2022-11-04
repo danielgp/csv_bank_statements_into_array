@@ -138,7 +138,11 @@ class CsvTransilvania
             $arrayDetails                                      = explode(';', $arrayLinePieces[$this->aColumnsOrder[2]]);
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = $arrayDetails[0];
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[2]] = $arrayLinePieces[$this->aColumnsOrder[4]];
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[3]] = $arrayLinePieces[$this->aColumnsOrder[5]];
+            if ($this->bolDocumentDateDifferentThanPostingDate) {
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[3]] = $arrayLinePieces[$this->aColumnsOrder[5]];
+            } else {
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[3]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[2]];
+            }
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate($arrayLinePieces[$this->aColumnsOrder[1]], 'yyyy-MM-dd');
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate($arrayLinePieces[$this->aColumnsOrder[0]], 'yyyy-MM-dd');
             if (array_key_exists($this->aryCol[7], $this->aryRsltLn[$this->intOpNo])) {
@@ -196,6 +200,16 @@ class CsvTransilvania
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[11]] = $arrayDetails[4];
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $arrayDetails[3];
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[20]] = $arrayDetails[5];
+                    break;
+                case 'Plata la POS':
+                    $matches                                            = '';
+                    preg_match_all('/RON\s.*\svaloare\strz:/m', $arrayDetails[1], $matches, PREG_SET_ORDER, 0);
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = str_replace(['RON ', ' valoare trz:'], '', $matches[0][0]);
+                    break;
+                case 'Plata la POS non-BT cu card VISA':
+                    $matches                                            = '';
+                    preg_match_all('/TID:[0-9]{1,8}\s.*\sRO\s/m', $arrayDetails[1], $matches, PREG_SET_ORDER, 0);
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = preg_replace(['/TID:[0-9]{1,8}\s/m', '/\sRO\s/m'], '', $matches[0][0]);
                     break;
                 case 'Plata OP intra - canal electronic':
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[10]] = $arrayDetails[4];
