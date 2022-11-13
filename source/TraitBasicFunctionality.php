@@ -74,6 +74,7 @@ trait TraitBasicFunctionality
             21 => 'BeneficiaryAddress',
             22 => 'SwiftCode',
             23 => 'AtmLocation',
+            99 => 'Sold',
         ];
     }
 
