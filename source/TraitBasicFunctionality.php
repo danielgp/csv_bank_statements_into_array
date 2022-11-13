@@ -28,6 +28,7 @@ namespace danielgp\csv_bank_statements_into_array;
 
 trait TraitBasicFunctionality
 {
+
     use \danielgp\io_operations\InputOutputStrings,
         \danielgp\io_operations\InputOutputFiles;
 
@@ -69,6 +70,8 @@ trait TraitBasicFunctionality
             17 => 'AmountOriginalCurrency',
             18 => 'Authorization',
             19 => 'CardNo',
+            20 => 'SwiftCode',
+            21 => 'AtmLocation',
         ];
     }
 
@@ -96,6 +99,14 @@ trait TraitBasicFunctionality
                 $this->aryRsltLn[$this->intOpNo][$strColumnToAssignTo] = $strValueToAssign;
             }
         }
+    }
+
+    private function containsCaseInsesitiveString($strNeedle, $strHaystack)
+    {
+        if (strlen(str_ireplace($strNeedle, '', $strHaystack)) != strlen($strHaystack)) {
+            return true;
+        }
+        return false;
     }
 
     private function knownHeaders()
@@ -126,6 +137,16 @@ trait TraitBasicFunctionality
             }
         }
         return $strResult;
+    }
+
+    private function getSwiftBankFromCode($strSwiftCode)
+    {
+        $arraySwiftCodes = $this->getArrayFromJsonFile(__DIR__, 'swiftCodes.json');
+        $strReturn       = $strSwiftCode . ' is not known (yet)';
+        if (array_key_exists($strSwiftCode, $arraySwiftCodes)) {
+            $strReturn = $arraySwiftCodes[$strSwiftCode];
+        }
+        return $strReturn;
     }
 
     private function processDocumentDate($strDocumentDate)
@@ -163,4 +184,5 @@ trait TraitBasicFunctionality
                 . 'Europe/Bucharest', \IntlDateFormatter::GREGORIAN, 'yyyy-MM-dd');
         return $dateFormatterOut->format($intDate);
     }
+
 }

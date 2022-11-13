@@ -52,10 +52,15 @@ trait TraitImportBankStatement
                 $cBank       = new CsvIng($bolDocDateDiffersThanPostDate);
                 $arrayResult = $cBank->processCsvFileFromIng($strFileNameToProcess, $aryLn);
                 break;
+            case 'Transilvania':
+                $cBank       = new CsvTransilvania($bolDocDateDiffersThanPostDate);
+                $arrayResult = $cBank->processCsvFileFromTransilvania($strFileNameToProcess, $aryLn);
+                break;
             default:
                 throw new \RuntimeException('Bank ' . $strBankLabel . ' is not implemented yet!');
             // intentionally left out open
         }
         return $arrayResult;
     }
+
 }

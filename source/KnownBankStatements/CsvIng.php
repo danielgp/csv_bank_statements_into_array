@@ -33,6 +33,7 @@ namespace danielgp\csv_bank_statements_into_array;
  */
 class CsvIng
 {
+
     use TraitBasicFunctionality;
 
     private $aColumnsOrder = [];
@@ -122,14 +123,6 @@ class CsvIng
                         . $strFinalString, 'dd-MM-yyyy');
                 break;
         }
-    }
-
-    private function containsCaseInsesitiveString($strNeedle, $strHaystack)
-    {
-        if (strlen(str_ireplace($strNeedle, '', $strHaystack)) != strlen($strHaystack)) {
-            return true;
-        }
-        return false;
     }
 
     private function initializeHeader($strFileNameToProcess)
@@ -475,4 +468,5 @@ class CsvIng
             ]);
         }
     }
+
 }
