@@ -74,6 +74,7 @@ class CsvTransilvania
                         $strLineReminder        = substr(trim($strLineContent), 23, 1000);
                         $strLineReminderTweaked = preg_replace(['",,"', '/[A-Z0-9]{16}/'], [',"0",', '"$0"'], $strLineReminder);
                         $arrayReminderPieces    = explode('","', $strLineReminderTweaked);
+                        $arrayReminderPieces[4] = str_replace('"', '', $arrayReminderPieces[4]); // cleaning up and extra "
                         $strReference           = $arrayReminderPieces[1];
                         if (array_key_exists('Referinta tranzactiei', $arrayLinePieces)) {
                             if ($arrayLinePieces['Referinta tranzactiei'] == $strReference) {
@@ -100,7 +101,7 @@ class CsvTransilvania
                             $arrayLinePieces[$this->aryCol[7]]  = $this->applyEtlConversions($arrayReminderPieces[2], [
                                 'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
                             ]);
-                            $arrayLinePieces[$this->aryCol[8]]  = $this->applyEtlConversions(($arrayReminderPieces[3] == ',' ? $arrayReminderPieces[4] : $arrayReminderPieces[3]), [
+                            $arrayLinePieces[$this->aryCol[8]]  = $this->applyEtlConversions($arrayReminderPieces[3], [
                                 'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
                             ]);
                             $arrayLinePieces[$this->aryCol[15]] = $arrayReminderPieces[0];
@@ -109,13 +110,13 @@ class CsvTransilvania
                             $arrayLinePieces[$this->aColumnsOrder[4]] = $this->applyEtlConversions($arrayReminderPieces[2], [
                                 'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
                             ]);
-                            $arrayLinePieces[$this->aColumnsOrder[5]] = $this->applyEtlConversions(($arrayReminderPieces[3] == ',' ? $arrayReminderPieces[4] : $arrayReminderPieces[3]), [
+                            $arrayLinePieces[$this->aColumnsOrder[5]] = $this->applyEtlConversions($arrayReminderPieces[3], [
                                 'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
                             ]);
                         }
                         $arrayLinePieces[$this->aColumnsOrder[0]] = substr($strLineContent, 0, 10);
                         $arrayLinePieces[$this->aColumnsOrder[1]] = substr($strLineContent, 11, 10);
-                        $arrayLinePieces[$this->aColumnsOrder[6]] = $this->applyEtlConversions($arrayReminderPieces[6], [
+                        $arrayLinePieces[$this->aColumnsOrder[6]] = $this->applyEtlConversions($arrayReminderPieces[4], [
                             'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
                         ]);
                     }
