@@ -70,8 +70,10 @@ trait TraitBasicFunctionality
             17 => 'AmountOriginalCurrency',
             18 => 'Authorization',
             19 => 'CardNo',
-            20 => 'SwiftCode',
-            21 => 'AtmLocation',
+            20 => 'Currency',
+            21 => 'BeneficiaryAddress',
+            22 => 'SwiftCode',
+            23 => 'AtmLocation',
         ];
     }
 

@@ -179,27 +179,27 @@ class CsvTransilvania
             if (!array_key_exists($this->aryCol[18], $this->aryRsltLn[$this->intOpNo])) {
                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[18]] = '';
             }
-            if (!array_key_exists($this->aryCol[20], $this->aryRsltLn[$this->intOpNo])) {
-                $this->aryRsltLn[$this->intOpNo][$this->aryCol[20]] = '';
+            if (!array_key_exists($this->aryCol[22], $this->aryRsltLn[$this->intOpNo])) {
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[22]] = '';
             }
-            if (!array_key_exists($this->aryCol[21], $this->aryRsltLn[$this->intOpNo])) {
-                $this->aryRsltLn[$this->intOpNo][$this->aryCol[21]] = '';
+            if (!array_key_exists($this->aryCol[23], $this->aryRsltLn[$this->intOpNo])) {
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[23]] = '';
             }
             switch ($this->aryRsltLn[$this->intOpNo][$this->aryCol[1]]) {
                 case 'Depunere numerar ATM':
                     $matches                                            = '';
                     preg_match_all('/\sATM\s.*\sRRN/m', $arrayDetails[1], $matches, PREG_SET_ORDER, 0);
-                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[21]] = str_replace([' ATM ', ' RRN'], '', $matches[0][0]);
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[23]] = str_replace([' ATM ', ' RRN'], '', $matches[0][0]);
                     break;
                 case 'Incasare OP':
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[11]] = $arrayDetails[3];
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $arrayDetails[2];
-                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[20]] = $arrayDetails[4];
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[22]] = $arrayDetails[4];
                     break;
                 case 'Incasare OP - canal electronic':
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[11]] = $arrayDetails[4];
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[16]] = $arrayDetails[3];
-                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[20]] = $arrayDetails[5];
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[22]] = $arrayDetails[5];
                     break;
                 case 'Plata la POS':
                     $matches                                            = '';
@@ -214,16 +214,16 @@ class CsvTransilvania
                 case 'Plata OP intra - canal electronic':
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[10]] = $arrayDetails[4];
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $arrayDetails[3];
-                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[20]] = $arrayDetails[5];
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[22]] = $arrayDetails[5];
                     break;
                 case 'Plata OP inter - canal electronic':
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[10]] = $arrayDetails[5];
                     $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $arrayDetails[4];
-                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[20]] = $arrayDetails[6];
+                    $this->aryRsltLn[$this->intOpNo][$this->aryCol[22]] = $arrayDetails[6];
                     break;
             }
-            if ($this->aryRsltLn[$this->intOpNo][$this->aryCol[20]] != '') {
-                $this->aryRsltLn[$this->intOpNo][$this->aryCol[13]] = $this->getSwiftBankFromCode($this->aryRsltLn[$this->intOpNo][$this->aryCol[20]]);
+            if ($this->aryRsltLn[$this->intOpNo][$this->aryCol[22]] != '') {
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[13]] = $this->getSwiftBankFromCode($this->aryRsltLn[$this->intOpNo][$this->aryCol[22]]);
             }
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[14]] = $arrayLinePieces[$this->aColumnsOrder[3]];
         }
