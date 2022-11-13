@@ -69,54 +69,56 @@ class CsvTransilvania
             if ($this->containsCaseInsesitiveString('Data tranzactie,Data valuta,Descriere', $strLineContent)) {
                 $this->aColumnsOrder = explode(',', trim($strLineContent));
             } else {
-                if ($this->aColumnsOrder != []) {
-                    $strLineReminder        = substr($strLineContent, 23, 1000);
-                    $strLineReminderTweaked = str_replace(',,', ',"0",', $strLineReminder);
-                    $arrayReminderPieces    = explode('"', $strLineReminderTweaked);
-                    $strReference           = str_replace(',', '', $arrayReminderPieces[1]);
-                    if (array_key_exists('Referinta tranzactiei', $arrayLinePieces)) {
-                        if ($arrayLinePieces['Referinta tranzactiei'] == $strReference) {
-                            if (array_key_exists('LineWithinFile', $arrayLinePieces)) {
-                                $arrayLinePieces['LineWithinFile'] = [
-                                    $arrayLinePieces['LineWithinFile'],
-                                    ($intLineNumber + 1),
-                                ];
+                if ($intLineNumber <= 90) {
+                    if ($this->aColumnsOrder != []) {
+                        $strLineReminder        = substr(trim($strLineContent), 23, 1000);
+                        $strLineReminderTweaked = preg_replace(['",,"', '/[A-Z0-9]{16}/'], [',"0",', '"$0"'], $strLineReminder);
+                        $arrayReminderPieces    = explode('","', $strLineReminderTweaked);
+                        $strReference           = $arrayReminderPieces[1];
+                        if (array_key_exists('Referinta tranzactiei', $arrayLinePieces)) {
+                            if ($arrayLinePieces['Referinta tranzactiei'] == $strReference) {
+                                if (array_key_exists('LineWithinFile', $arrayLinePieces)) {
+                                    $arrayLinePieces['LineWithinFile'] = [
+                                        $arrayLinePieces['LineWithinFile'],
+                                        ($intLineNumber + 1),
+                                    ];
+                                } else {
+                                    $arrayLinePieces['LineWithinFile']        = ($intLineNumber + 1);
+                                    $arrayLinePieces[$this->aColumnsOrder[3]] = $strReference;
+                                }
                             } else {
+                                $this->processRegularLine($arrayLinePieces);
+                                $arrayLinePieces                          = [];
                                 $arrayLinePieces['LineWithinFile']        = ($intLineNumber + 1);
                                 $arrayLinePieces[$this->aColumnsOrder[3]] = $strReference;
                             }
                         } else {
-                            $this->processRegularLine($strLineContent, $intLineNumber, $arrayLinePieces);
-                            $arrayLinePieces                          = [];
                             $arrayLinePieces['LineWithinFile']        = ($intLineNumber + 1);
                             $arrayLinePieces[$this->aColumnsOrder[3]] = $strReference;
                         }
-                    } else {
-                        $arrayLinePieces['LineWithinFile']        = ($intLineNumber + 1);
-                        $arrayLinePieces[$this->aColumnsOrder[3]] = $strReference;
+                        if (substr($arrayReminderPieces[0], 0, 8) == 'Comision') {
+                            $arrayLinePieces[$this->aryCol[7]]  = $this->applyEtlConversions($arrayReminderPieces[2], [
+                                'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
+                            ]);
+                            $arrayLinePieces[$this->aryCol[8]]  = $this->applyEtlConversions(($arrayReminderPieces[3] == ',' ? $arrayReminderPieces[4] : $arrayReminderPieces[3]), [
+                                'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
+                            ]);
+                            $arrayLinePieces[$this->aryCol[15]] = $arrayReminderPieces[0];
+                        } else {
+                            $arrayLinePieces[$this->aColumnsOrder[2]] = str_replace('"', '', $arrayReminderPieces[0]);
+                            $arrayLinePieces[$this->aColumnsOrder[4]] = $this->applyEtlConversions($arrayReminderPieces[2], [
+                                'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
+                            ]);
+                            $arrayLinePieces[$this->aColumnsOrder[5]] = $this->applyEtlConversions(($arrayReminderPieces[3] == ',' ? $arrayReminderPieces[4] : $arrayReminderPieces[3]), [
+                                'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
+                            ]);
+                        }
+                        $arrayLinePieces[$this->aColumnsOrder[0]] = substr($strLineContent, 0, 10);
+                        $arrayLinePieces[$this->aColumnsOrder[1]] = substr($strLineContent, 11, 10);
+                        $arrayLinePieces[$this->aColumnsOrder[6]] = $this->applyEtlConversions($arrayReminderPieces[6], [
+                            'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
+                        ]);
                     }
-                    if (substr($arrayReminderPieces[0], 0, 8) == 'Comision') {
-                        $arrayLinePieces[$this->aryCol[7]]  = $this->applyEtlConversions($arrayReminderPieces[2], [
-                            'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
-                        ]);
-                        $arrayLinePieces[$this->aryCol[8]]  = $this->applyEtlConversions(($arrayReminderPieces[3] == ',' ? $arrayReminderPieces[4] : $arrayReminderPieces[3]), [
-                            'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
-                        ]);
-                        $arrayLinePieces[$this->aryCol[15]] = $arrayReminderPieces[0];
-                    } else {
-                        $arrayLinePieces[$this->aColumnsOrder[2]] = $arrayReminderPieces[0];
-                        $arrayLinePieces[$this->aColumnsOrder[4]] = $this->applyEtlConversions($arrayReminderPieces[2], [
-                            'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
-                        ]);
-                        $arrayLinePieces[$this->aColumnsOrder[5]] = $this->applyEtlConversions(($arrayReminderPieces[3] == ',' ? $arrayReminderPieces[4] : $arrayReminderPieces[3]), [
-                            'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
-                        ]);
-                    }
-                    $arrayLinePieces[$this->aColumnsOrder[0]] = substr($strLineContent, 0, 10);
-                    $arrayLinePieces[$this->aColumnsOrder[1]] = substr($strLineContent, 11, 10);
-                    $arrayLinePieces[$this->aColumnsOrder[6]] = $this->applyEtlConversions($arrayReminderPieces[6], [
-                        'String Conversion to Float' => $this->aEtlConversionRules['String Conversion to Float']
-                    ]);
                 }
             }
         }
@@ -126,7 +128,7 @@ class CsvTransilvania
         ];
     }
 
-    private function processRegularLine($strLineContent, $intLineNumber, $arrayLinePieces)
+    private function processRegularLine($arrayLinePieces)
     {
         if ($this->aColumnsOrder != []) {
             $this->intOpNo++;
@@ -138,19 +140,19 @@ class CsvTransilvania
             $arrayDetails                                      = explode(';', $arrayLinePieces[$this->aColumnsOrder[2]]);
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[1]] = $arrayDetails[0];
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[2]] = $arrayLinePieces[$this->aColumnsOrder[4]];
-            if ($this->bolDocumentDateDifferentThanPostingDate) {
-                $this->aryRsltLn[$this->intOpNo][$this->aryCol[3]] = $arrayLinePieces[$this->aColumnsOrder[5]];
-            } else {
-                $this->aryRsltLn[$this->intOpNo][$this->aryCol[3]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[2]];
-            }
+            $this->aryRsltLn[$this->intOpNo][$this->aryCol[3]] = $arrayLinePieces[$this->aColumnsOrder[5]];
             $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate($arrayLinePieces[$this->aColumnsOrder[1]], 'yyyy-MM-dd');
-            $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate($arrayLinePieces[$this->aColumnsOrder[0]], 'yyyy-MM-dd');
-            if (array_key_exists($this->aryCol[7], $this->aryRsltLn[$this->intOpNo])) {
+            if ($this->bolDocumentDateDifferentThanPostingDate) {
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->transformCustomDateFormatIntoSqlDate($arrayLinePieces[$this->aColumnsOrder[0]], 'yyyy-MM-dd');
+            } else {
+                $this->aryRsltLn[$this->intOpNo][$this->aryCol[5]] = $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]];
+            }
+            if (array_key_exists($this->aryCol[7], $arrayLinePieces)) {
                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[7]] = $arrayLinePieces[$this->aryCol[7]];
             } else {
                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[7]] = 0;
             }
-            if (array_key_exists($this->aryCol[8], $this->aryRsltLn[$this->intOpNo])) {
+            if (array_key_exists($this->aryCol[8], $arrayLinePieces)) {
                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[8]] = $arrayLinePieces[$this->aryCol[8]];
             } else {
                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[8]] = 0;
