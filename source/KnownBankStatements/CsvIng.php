@@ -286,7 +286,7 @@ class CsvIng
                         break;
                     case 'numar cont':
                         if ($value != '') {
-                            if (substr($arrayLineContent, 0, 1) == '-') {
+                            if (!is_array($arrayLineContent) && substr($arrayLineContent, 0, 1) == '-') {
                                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $value;
                             } else {
                                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[10]] = $value;
@@ -295,7 +295,7 @@ class CsvIng
                         break;
                     case 'nume beneficiar/ordonator':
                         if ($value != '') {
-                            if (substr($arrayLineContent, 0, 1) == '-') {
+                            if (!is_array($arrayLineContent) && substr($arrayLineContent, 0, 1) == '-') {
                                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[10]] = $value;
                             } else {
                                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[12]] = $value;
