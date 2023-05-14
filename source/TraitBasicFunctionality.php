@@ -3,7 +3,7 @@
 /*
  * The MIT License
  *
- * Copyright 2019 Daniel Popiniuc <danielpopiniuc@gmail.com>
+ * Copyright 2019 - 2023 Daniel Popiniuc <danielpopiniuc@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -173,7 +173,8 @@ trait TraitBasicFunctionality
                 'replace circumflex accent with dot',
                 'trim',
             ]);
-            $intAmount        = filter_var($strAmountCleaned, FILTER_VALIDATE_FLOAT);
+            $intAmount        = $strAmountCleaned;
+            //$intAmount        = filter_var($strAmountCleaned, FILTER_VALIDATE_FLOAT);
         }
         return $intAmount;
     }

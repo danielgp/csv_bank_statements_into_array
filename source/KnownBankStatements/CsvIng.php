@@ -254,6 +254,11 @@ class CsvIng
             //echo 'Tranzactia cu numarul ' . $this->intOpNo . '...';
             $arrayContent = str_getcsv(trim($strLineContent), ";");
             $arrayLineContent = array_combine($this->aCsvHeaders, $arrayContent);
+            if ($this->intOpNo == 5) {
+            echo '<hr/>';
+            var_dump($arrayLineContent);
+            echo '<hr/>';
+            }
             //echo $this->showArrayWithinFloatingBox($arrayLineContent, 'red');
             //echo $this->showArrayWithinFloatingBox($this->aryCol, 'blue');
             foreach($arrayLineContent as $key => $value) {
@@ -265,11 +270,25 @@ class CsvIng
                         break;
                     case 'cont beneficiar/ordonator':
                         if ($value != '') {
-                            $this->aryRsltLn[$this->intOpNo][$this->aryCol[11]] = $value;
+                            if ($intAmount > 0) {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[11]] = $value;
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[10]] = $arrayLineContent['numar cont'];
+                            } else {
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[10]] = $value;
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[11]] = $arrayLineContent['numar cont'];
+                            }
                         }
                         break;
                     case 'data procesarii':
-                        $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate($value, 'yyyyMMdd');
+                        switch(strlen($value)) {
+                            default:
+                            case 8:
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate($value, 'yyyyMMdd');
+                                break;
+                            case 10:
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[4]] = $this->transformCustomDateFormatIntoSqlDate($value, 'dd.MM.yyyy');
+                                break;
+                        }
                         break;
                     case 'detalii tranzactie':
                         if ($value != '') {
@@ -303,18 +322,18 @@ class CsvIng
                         }
                         break;
                     case 'suma':
-                        $intAmount = abs($this->transformAmountFromStringIntoNumber($value));
+                        $intAmount = $this->transformAmountFromStringIntoNumber($value);
                         if ($arrayLineContent['tip tranzactie'] == 'Comision pe operatiune') {
                             if ($intAmount > 0) {
                                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[8]] = $intAmount;
                             } else {
-                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[7]] = $intAmount;
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[7]] = abs($intAmount);
                             }
                         } else {
                             if ($intAmount > 0) {
                                 $this->aryRsltLn[$this->intOpNo][$this->aryCol[3]] = $intAmount;
                             } else {
-                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[2]] = $intAmount;
+                                $this->aryRsltLn[$this->intOpNo][$this->aryCol[2]] = abs($intAmount);
                             }
                         }
                         break;
